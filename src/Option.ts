@@ -1,3 +1,6 @@
+/**
+ * Abstract base class for all message options. Provides methods to parse and serialize.
+ */
 export abstract class Option {
 
 	constructor(
@@ -88,7 +91,7 @@ export abstract class Option {
 		const code = prevCode + delta;
 
 		return {
-			result: optionConstructors[code](rawValue); //new Option(prevCode + delta, rawValue),
+			result: optionConstructors[code](rawValue), //new Option(prevCode + delta, rawValue),
 			readBytes: dataStart + length
 		};
 
@@ -153,6 +156,9 @@ export abstract class Option {
 
 }
 
+/**
+ * Specialized Message option for numeric contents
+ */
 export class NumericOption extends Option {
 
 	constructor(
@@ -191,6 +197,9 @@ export class NumericOption extends Option {
 
 }
 
+/**
+ * Specialized Message options for binary (and empty) content.
+ */
 export class BinaryOption extends Option {
 
 	constructor(
@@ -231,7 +240,9 @@ export class BinaryOption extends Option {
 
 }
 
-
+/**
+ * Specialized Message options for string content.
+ */
 export class StringOption extends Option {
 
 	constructor(
@@ -272,12 +283,15 @@ export class StringOption extends Option {
 
 }
 
-
+/**
+ * all defined assignments for instancing Options
+ */
 const optionConstructors: {[code: string]: (Buffer) => Option} = {};
 function defineOptionConstructor(
 	constructor: Function, 
 	code: number, name: string, repeatable: boolean,
-	...args: any[]): void {
+	...args: any[]
+): void {
 	optionConstructors[code] = optionConstructors[name] = 
 		(constructor as any).create.bind(constructor, ...[code, name, repeatable, ...args]);
 }

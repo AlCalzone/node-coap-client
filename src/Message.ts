@@ -10,6 +10,9 @@ export enum MessageType {
 function code(major: number, minor: number) {
 	return ((major & 0b111) << 5) + (minor & 0b11111);
 }
+/**
+ * all defined message codes
+ */
 export const MessageCode = Object.freeze({
 	empty: code(0, 0),
 
@@ -52,6 +55,9 @@ export const MessageCode = Object.freeze({
 
 });
 
+/**
+ * represents a CoAP message
+ */
 export class Message {
 
 	constructor(
