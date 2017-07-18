@@ -1,7 +1,8 @@
-export class Option {
+export abstract class Option {
 
 	constructor(
 		public readonly code: number,
+		public readonly name: string,
 		public rawValue: Buffer
 	) {
 
@@ -84,9 +85,10 @@ export class Option {
 		}
 
 		const rawValue = Buffer.from(buf.slice(dataStart, dataStart + length));
+		const code = prevCode + delta;
 
 		return {
-			result: new Option(prevCode + delta, rawValue),
+			result: optionConstructors[code](rawValue); //new Option(prevCode + delta, rawValue),
 			readBytes: dataStart + length
 		};
 
@@ -151,3 +153,146 @@ export class Option {
 
 }
 
+export class NumericOption extends Option {
+
+	constructor(
+		code: number, 
+		public readonly name: string,
+		public readonly repeatable: boolean,
+		public readonly maxLength: number,
+		rawValue: Buffer
+	) {
+		super(code, name, rawValue);
+	}
+
+	public get value(): number {
+		return this.rawValue.reduce((acc, cur) => acc * 255 + cur, 0);
+	}
+	public set value(value: number) {
+		const ret = [];
+		while (value > 0) {
+			ret.unshift(value & 0xff);
+			value >>>= 8;
+		}
+		if (ret.length > this.maxLength)
+			throw new Error("cannot serialize this value because it is too large");
+		this.rawValue = Buffer.from(ret);
+	}
+
+	static create(
+		code: number, 
+		name: string,
+		repeatable: boolean,
+		maxLength: number,
+		rawValue: Buffer
+	): NumericOption {
+		return new NumericOption(code, name, repeatable, maxLength, rawValue);
+	}
+
+}
+
+export class BinaryOption extends Option {
+
+	constructor(
+		code: number, 
+		public readonly name: string,
+		public readonly repeatable: boolean,
+		public readonly minLength: number,
+		public readonly maxLength: number,
+		rawValue: Buffer
+	) {
+		super(code, name, rawValue);
+	}
+
+	public get value(): Buffer {
+		return this.rawValue;
+	}
+	public set value(value: Buffer) {
+		if (value == null) {
+			if (this.minLength > 0) throw new Error("cannot assign null to a Buffer with minimum length");
+		} else {
+			if (value.length < this.minLength || value.length > this.maxLength) {
+				throw new Error("The length of the Buffer is outside the specified bounds");
+			}
+		}
+		this.rawValue = value;
+	}
+
+	static create(
+		code: number, 
+		name: string,
+		repeatable: boolean,
+		minLength: number,
+		maxLength: number,
+		rawValue: Buffer
+	): BinaryOption {
+		return new BinaryOption(code, name, repeatable, minLength, maxLength, rawValue);
+	}
+
+}
+
+
+export class StringOption extends Option {
+
+	constructor(
+		code: number, 
+		public readonly name: string,
+		public readonly repeatable: boolean,
+		public readonly minLength: number,
+		public readonly maxLength: number,
+		rawValue: Buffer
+	) {
+		super(code, name, rawValue);
+	}
+
+	public get value(): string {
+		return this.rawValue.toString("utf8");
+	}
+	public set value(value: string) {
+		if (value == null) {
+			if (this.minLength > 0) throw new Error("cannot assign null to a string with minimum length");
+		} else {
+			if (value.length < this.minLength || value.length > this.maxLength) {
+				throw new Error("The length of the string is outside the specified bounds");
+			}
+		}
+		this.rawValue = Buffer.from(value, "utf8");
+	}
+
+	static create(
+		code: number, 
+		name: string,
+		repeatable: boolean,
+		minLength: number,
+		maxLength: number,
+		rawValue: Buffer
+	): StringOption {
+		return new StringOption(code, name, repeatable, minLength, maxLength, rawValue);
+	}
+
+}
+
+
+const optionConstructors: {[code: string]: (Buffer) => Option} = {};
+function defineOptionConstructor(
+	constructor: Function, 
+	code: number, name: string, repeatable: boolean,
+	...args: any[]): void {
+	optionConstructors[code] = optionConstructors[name] = 
+		(constructor as any).create.bind(constructor, ...[code, name, repeatable, ...args]);
+}
+defineOptionConstructor(NumericOption, 7, "Uri-Port", false, 2);
+defineOptionConstructor(NumericOption, 12, "Content-Format", false, 2);
+defineOptionConstructor(NumericOption, 14, "Max-Age", false, 4);
+defineOptionConstructor(NumericOption, 17, "Accept", false, 2);
+defineOptionConstructor(NumericOption, 60, "Size1", false, 4);
+defineOptionConstructor(BinaryOption, 1, "If-Match", true, 0, 8);
+defineOptionConstructor(BinaryOption, 4, "ETag", true, 1, 8);
+defineOptionConstructor(BinaryOption, 5, "If-None-Match", false, 0, 0);
+defineOptionConstructor(StringOption, 3, "Uri-Host", false, 1, 255);
+defineOptionConstructor(StringOption, 8, "Location-Path", true, 0, 255);
+defineOptionConstructor(StringOption, 11, "Uri-Path", true, 0, 255);
+defineOptionConstructor(StringOption, 15, "Uri-Query", true, 0, 255);
+defineOptionConstructor(StringOption, 20, "Location-Query", true, 0, 255);
+defineOptionConstructor(StringOption, 35, "Proxy-Uri", true, 1, 1034);
+defineOptionConstructor(StringOption, 39, "Proxy-Scheme", true, 1, 255);
