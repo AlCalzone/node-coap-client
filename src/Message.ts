@@ -1,4 +1,6 @@
-﻿export enum MessageType {
+﻿import { Option } from "./Option";
+
+export enum MessageType {
 	CON = 0, // Confirmable
 	NON = 1, // Non-Confirmable
 	ACK = 2, // Acknowledgement
@@ -58,7 +60,7 @@ export class Message {
 		public code: number,
 		public messageId: number,
 		public token: Buffer,
-		public options: any[],
+		public options: Option[],
 		public payload: Buffer
 	) {
 
@@ -80,19 +82,30 @@ export class Message {
 		const token = Buffer.alloc(tokenLength);
 		if (tokenLength > 0) buf.copy(token, 0, 4, 4 + tokenLength);
 
+		// parse options
 		let optionsStart = 4 + tokenLength;
+		const options = [];
+		let prevCode = 0; // code of the previously read option 
+		while (optionsStart < buf.length && buf[optionsStart] !== 0xff) {
+			// read option
+			const result = Option.parse(buf.slice(optionsStart), prevCode);
+			options.push(result.result);
+			prevCode = result.result.code;
+			optionsStart += result.readBytes;
+		}
+
 		let payload: Buffer;
-		if (buf[optionsStart] !== 0xff) {
-			// here comes an options entry
-			// we don't support this yet
-			throw new Error("CoAP options are not supported yet");
-		} else {
+
+		if (optionsStart < buf.length && buf[optionsStart] == 0xff) {
+			// here comes the payload
 			// copy the remainder of the packet
 			payload = Buffer.from(buf.slice(optionsStart+1));
+		} else {
+			payload = Buffer.from([]);
 		}
 
 		return new Message(
-			version, type, code, messageId, token, [], payload
+			version, type, code, messageId, token, options, payload
 		);
 	}
 
@@ -102,8 +115,20 @@ export class Message {
 	public serialize(): Buffer {
 		const tokenLength = this.token ? this.token.length : 0;
 
-		const ret = Buffer.allocUnsafe(4 + tokenLength + 1 + this.payload.length);
+		// serialize the options first, so we know how many bytes to reserve
+		let optionsBuffer : Buffer;
+		if (this.options && this.options.length) {
+			optionsBuffer = Buffer.concat(
+				this.options.map((o, i, opts) => o.serialize(i > 0 ? opts[i-1].code : 0))
+			);
+		} else {
+			optionsBuffer = Buffer.from([]);
+		}
 
+		// allocate the buffer to be filled
+		const ret = Buffer.allocUnsafe(4 + tokenLength + optionsBuffer.length + 1 + this.payload.length);
+
+		// write fixed values
 		ret[0] = ((this.version & 0b11) << 6)
 			+ ((this.type & 0b11) << 4)
 			+ (tokenLength & 0b1111)
@@ -112,18 +137,21 @@ export class Message {
 		ret[2] = (this.messageId >>> 8) & 0xff;
 		ret[3] = this.messageId & 0xff;
 
+		// write the token if neccessary
 		if (tokenLength > 0) {
 			this.token.copy(ret, 4);
 		}
 
-		let optionsStart = 4 + tokenLength;
-		if (this.options && this.options.length) {
-			// write options entries
-			// not supported yet
-			throw new Error("CoAP options are not supported yet");
+		// write the options where they belong (if any)
+		let offset = 4 + tokenLength;
+		if (optionsBuffer.length > 0) {
+			optionsBuffer.copy(ret, offset);
+			offset += optionsBuffer.length;
 		}
-		ret[optionsStart] = 0xff;
-		this.payload.copy(ret, optionsStart + 1);
+
+		// write the payload where it belongs
+		ret[offset] = 0xff;
+		this.payload.copy(ret, offset + 1);
 
 		return ret;
 	}
