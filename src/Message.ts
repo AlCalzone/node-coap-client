@@ -132,7 +132,8 @@ export class Message {
 		}
 
 		// allocate the buffer to be filled
-		const ret = Buffer.allocUnsafe(4 + tokenLength + optionsBuffer.length + 1 + this.payload.length);
+		const payloadLength = this.payload ? this.payload.length : -1; // -1 to offset the payload byte for empty payloads
+		const ret = Buffer.allocUnsafe(4 + tokenLength + optionsBuffer.length + 1 + payloadLength);
 
 		// write fixed values
 		ret[0] = ((this.version & 0b11) << 6)
@@ -156,8 +157,10 @@ export class Message {
 		}
 
 		// write the payload where it belongs
-		ret[offset] = 0xff;
-		this.payload.copy(ret, offset + 1);
+		if (payloadLength > 0) {
+			ret[offset] = 0xff;
+			this.payload.copy(ret, offset + 1);
+		}
 
 		return ret;
 	}
