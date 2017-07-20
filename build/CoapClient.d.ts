@@ -30,6 +30,8 @@ export declare class CoapClient {
     private static dtlsParams;
     /** All pending requests, sorted by the token */
     private static pendingRequests;
+    /** All active observations, sorted by the url */
+    private static activeObserveTokens;
     /**
      * Sets the security params to be used for the given hostname
      */
@@ -42,6 +44,10 @@ export declare class CoapClient {
      * @param options - Various options to control the request.
      */
     static request(url: string | nodeUrl.Url, method: RequestMethod, payload?: Buffer, options?: RequestOptions): Promise<CoapResponse>;
+    /**
+     * Stops observation of the given url
+     */
+    static stopObserving(url: string | nodeUrl.Url): void;
     private static onMessage(origin, message, rinfo);
     /**
      * Send a CoAP message to the given endpoint

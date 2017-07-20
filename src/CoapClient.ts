@@ -45,6 +45,10 @@ class Origin {
 	}
 }
 
+function urlToString(url: nodeUrl.Url): string {
+	return `${url.protocol}//${url.hostname}:${url.port}${url.pathname}`;
+}
+
 interface ConnectionInfo {
 	origin: Origin,
 	socket: SocketWrapper,
@@ -56,7 +60,8 @@ interface PendingRequest {
 	origin: string,
 	token: Buffer,
 	callback: Promise<CoapResponse>,
-	keepAlive: boolean
+	keepAlive: boolean,
+	observe: boolean
 }
 
 class SocketWrapper extends EventEmitter {
@@ -124,6 +129,8 @@ export class CoapClient {
 	private static dtlsParams: { [hostname: string]: SecurityParameters } = {};
 	/** All pending requests, sorted by the token */
 	private static pendingRequests: { [token: string]: PendingRequest } = {};
+	/** All active observations, sorted by the url */
+	private static activeObserveTokens: { [url: string]: string } = {};
 
 	/**
 	 * Sets the security params to be used for the given hostname
@@ -155,7 +162,7 @@ export class CoapClient {
 		options = options || {};
 		options.confirmable = options.confirmable || true;
 		options.observe = options.observe || false;
-		options.keepAlive = options.keepAlive || options.observe || true;
+		options.keepAlive = options.keepAlive || true;
 
 		// retrieve or create the connection we're going to use
 		const
@@ -195,15 +202,45 @@ export class CoapClient {
 			origin: originString,
 			token,
 			keepAlive: options.keepAlive,
-			callback: response
+			callback: response,
+			observe: options.observe
 		}
 		CoapClient.pendingRequests[tokenString] = req;
+		// if we are observing, also remember that
+		if (options.observe) {
+			CoapClient.activeObserveTokens[urlToString(url)] = tokenString;
+		}
 
 		// now send the message
 		CoapClient.send(connection, type, code, messageId, token, msgOptions, payload);
 
 		return response;
 		
+	}
+
+	/**
+	 * Stops observation of the given url
+	 */
+	static stopObserving(url: string | nodeUrl.Url) {
+		// parse/convert url
+		if (typeof url === "string") {
+			url = nodeUrl.parse(url);
+		}
+
+		// normalize the url
+		const urlString = urlToString(url);
+		// see if we have the associated token remembered
+		if (CoapClient.activeObserveTokens.hasOwnProperty(urlString)) {
+			const token = CoapClient.activeObserveTokens[urlString];
+			// try to find the matching request
+			if (CoapClient.pendingRequests.hasOwnProperty(token)) {
+				const request = CoapClient.pendingRequests[token];
+				// and remove it from the table
+				delete CoapClient.pendingRequests[token];
+			}
+			// also remove the association from the observer table
+			delete CoapClient.activeObserveTokens[urlString];
+		}
 	}
 
 	private static onMessage(origin: string, message: Buffer, rinfo: dgram.RemoteInfo) {
@@ -222,9 +259,9 @@ export class CoapClient {
 				// this message has a token, check which request it belongs to
 				const tokenString = coapMsg.token.toString("hex");
 				if (CoapClient.pendingRequests.hasOwnProperty(tokenString)) {
-					// read the request and remove it from the table
+					// read the request and remove it from the table (if not observed)
 					const request = CoapClient.pendingRequests[tokenString];
-					delete CoapClient.pendingRequests[tokenString];
+					if (!request.observe) delete CoapClient.pendingRequests[tokenString];
 
 					// prepare the response
 					const response: CoapResponse = {
@@ -235,8 +272,22 @@ export class CoapClient {
 					// resolve the promise
 					(request.callback as DeferredPromise<CoapResponse>).resolve(response);
 				} else {
-					// no request found, what now?
-					// TODO: check spec
+					// no request found for this token, send RST so the server stops sending
+
+					// try to find the connection that belongs to this origin
+					const originString = origin.toString();
+					if (CoapClient.connections.hasOwnProperty(originString)) {
+						const connection = CoapClient.connections[originString];
+
+						// and send the reset
+						CoapClient.send(
+							connection,
+							MessageType.RST,
+							MessageCodes.empty,
+							coapMsg.messageId,
+							null, [], null
+						)
+					}
 				}
 			}
 

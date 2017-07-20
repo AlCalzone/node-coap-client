@@ -71,6 +71,9 @@ var Origin = (function () {
     };
     return Origin;
 }());
+function urlToString(url) {
+    return url.protocol + "//" + url.hostname + ":" + url.port + url.pathname;
+}
 var SocketWrapper = (function (_super) {
     __extends(SocketWrapper, _super);
     function SocketWrapper(socket) {
@@ -151,7 +154,7 @@ var CoapClient = (function () {
                         options = options || {};
                         options.confirmable = options.confirmable || true;
                         options.observe = options.observe || false;
-                        options.keepAlive = options.keepAlive || options.observe || true;
+                        options.keepAlive = options.keepAlive || true;
                         origin = Origin.fromUrl(url), originString = origin.toString();
                         return [4 /*yield*/, this.getConnection(origin)];
                     case 1:
@@ -181,15 +184,43 @@ var CoapClient = (function () {
                             origin: originString,
                             token: token,
                             keepAlive: options.keepAlive,
-                            callback: response
+                            callback: response,
+                            observe: options.observe
                         };
                         CoapClient.pendingRequests[tokenString] = req;
+                        // if we are observing, also remember that
+                        if (options.observe) {
+                            CoapClient.activeObserveTokens[urlToString(url)] = tokenString;
+                        }
                         // now send the message
                         CoapClient.send(connection, type, code, messageId, token, msgOptions, payload);
                         return [2 /*return*/, response];
                 }
             });
         });
+    };
+    /**
+     * Stops observation of the given url
+     */
+    CoapClient.stopObserving = function (url) {
+        // parse/convert url
+        if (typeof url === "string") {
+            url = nodeUrl.parse(url);
+        }
+        // normalize the url
+        var urlString = urlToString(url);
+        // see if we have the associated token remembered
+        if (CoapClient.activeObserveTokens.hasOwnProperty(urlString)) {
+            var token = CoapClient.activeObserveTokens[urlString];
+            // try to find the matching request
+            if (CoapClient.pendingRequests.hasOwnProperty(token)) {
+                var request = CoapClient.pendingRequests[token];
+                // and remove it from the table
+                delete CoapClient.pendingRequests[token];
+            }
+            // also remove the association from the observer table
+            delete CoapClient.activeObserveTokens[urlString];
+        }
     };
     CoapClient.onMessage = function (origin, message, rinfo) {
         // parse the CoAP message
@@ -208,9 +239,10 @@ var CoapClient = (function () {
                 // this message has a token, check which request it belongs to
                 var tokenString = coapMsg.token.toString("hex");
                 if (CoapClient.pendingRequests.hasOwnProperty(tokenString)) {
-                    // read the request and remove it from the table
+                    // read the request and remove it from the table (if not observed)
                     var request = CoapClient.pendingRequests[tokenString];
-                    delete CoapClient.pendingRequests[tokenString];
+                    if (!request.observe)
+                        delete CoapClient.pendingRequests[tokenString];
                     // prepare the response
                     var response = {
                         code: coapMsg.code,
@@ -220,8 +252,14 @@ var CoapClient = (function () {
                     request.callback.resolve(response);
                 }
                 else {
-                    // no request found, what now?
-                    // TODO: check spec
+                    // no request found for this token, send RST so the server stops sending
+                    // try to find the connection that belongs to this origin
+                    var originString = origin.toString();
+                    if (CoapClient.connections.hasOwnProperty(originString)) {
+                        var connection = CoapClient.connections[originString];
+                        // and send the reset
+                        CoapClient.send(connection, Message_1.MessageType.RST, Message_1.MessageCodes.empty, coapMsg.messageId, null, [], null);
+                    }
                 }
             }
         }
@@ -312,5 +350,7 @@ CoapClient.connections = {};
 CoapClient.dtlsParams = {};
 /** All pending requests, sorted by the token */
 CoapClient.pendingRequests = {};
+/** All active observations, sorted by the url */
+CoapClient.activeObserveTokens = {};
 exports.CoapClient = CoapClient;
 //# sourceMappingURL=CoapClient.js.map
