@@ -1,8 +1,9 @@
 {
     "name": "node-coap-client",
-    "version": "0.0.0",
+    "version": "0.0.1",
     "description": "Clientside implementation of the CoAP protocol with DTLS support.",
-    "main": "index.js",
+    "main": "./build/CoapClient.js",
+    "types": "./build/CoapClient.d.ts",
     "author": {
         "name": "AlCalzone",
         "email": "d.griesel@gmx.net"
