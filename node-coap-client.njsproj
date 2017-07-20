@@ -31,6 +31,9 @@
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="src\CoapClient.ts" />
+    <TypeScriptCompile Include="src\ContentFormats.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
     <TypeScriptCompile Include="src\lib\DeferredPromise.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>

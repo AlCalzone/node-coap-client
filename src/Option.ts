@@ -1,3 +1,14 @@
+import { ContentFormats } from "./ContentFormats";
+
+function numberToBuffer(value: number) : Buffer {
+	const ret = [];
+	while (value > 0) {
+		ret.unshift(value & 0xff);
+		value >>>= 8;
+	}
+	return Buffer.from(ret);
+}
+
 /**
  * Abstract base class for all message options. Provides methods to parse and serialize.
  */
@@ -91,7 +102,7 @@ export abstract class Option {
 		const code = prevCode + delta;
 
 		return {
-			result: optionConstructors[code](rawValue), //new Option(prevCode + delta, rawValue),
+			result: OptionConstructors[code](rawValue), //new Option(prevCode + delta, rawValue),
 			readBytes: dataStart + length
 		};
 
@@ -286,13 +297,13 @@ export class StringOption extends Option {
 /**
  * all defined assignments for instancing Options
  */
-const optionConstructors: {[code: string]: (Buffer) => Option} = {};
+const OptionConstructors: {[code: string]: (Buffer) => Option} = {};
 function defineOptionConstructor(
 	constructor: Function, 
 	code: number, name: string, repeatable: boolean,
 	...args: any[]
 ): void {
-	optionConstructors[code] = optionConstructors[name] = 
+	OptionConstructors[code] = OptionConstructors[name] = 
 		(constructor as any).create.bind(constructor, ...[code, name, repeatable, ...args]);
 }
 defineOptionConstructor(NumericOption, 7, "Uri-Port", false, 2);
@@ -310,3 +321,14 @@ defineOptionConstructor(StringOption, 15, "Uri-Query", true, 0, 255);
 defineOptionConstructor(StringOption, 20, "Location-Query", true, 0, 255);
 defineOptionConstructor(StringOption, 35, "Proxy-Uri", true, 1, 1034);
 defineOptionConstructor(StringOption, 39, "Proxy-Scheme", true, 1, 255);
+
+
+
+export const Options = Object.freeze({
+	UriHost: (hostname: string) => OptionConstructors["Uri-Host"](Buffer.from(hostname)),
+	UriPort: (port: number) => OptionConstructors["Uri-Port"](numberToBuffer(port)),
+	UriPath: (pathname: string) => OptionConstructors["Uri-Path"](Buffer.from(pathname)),
+
+	ContentFormat: (format: ContentFormats) => OptionConstructors["Content-Format"](numberToBuffer(format)),
+
+});

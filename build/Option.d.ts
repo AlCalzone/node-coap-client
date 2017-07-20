@@ -1,4 +1,5 @@
 /// <reference types="node" />
+import { ContentFormats } from "./ContentFormats";
 /**
  * Abstract base class for all message options. Provides methods to parse and serialize.
  */
@@ -60,3 +61,9 @@ export declare class StringOption extends Option {
     value: string;
     static create(code: number, name: string, repeatable: boolean, minLength: number, maxLength: number, rawValue: Buffer): StringOption;
 }
+export declare const Options: Readonly<{
+    UriHost: (hostname: string) => Option;
+    UriPort: (port: number) => Option;
+    UriPath: (pathname: string) => Option;
+    ContentFormat: (format: ContentFormats) => Option;
+}>;

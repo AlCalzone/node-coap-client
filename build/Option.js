@@ -10,6 +10,14 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+function numberToBuffer(value) {
+    var ret = [];
+    while (value > 0) {
+        ret.unshift(value & 0xff);
+        value >>>= 8;
+    }
+    return Buffer.from(ret);
+}
 /**
  * Abstract base class for all message options. Provides methods to parse and serialize.
  */
@@ -104,7 +112,7 @@ var Option = (function () {
         var rawValue = Buffer.from(buf.slice(dataStart, dataStart + length));
         var code = prevCode + delta;
         return {
-            result: optionConstructors[code](rawValue),
+            result: OptionConstructors[code](rawValue),
             readBytes: dataStart + length
         };
     };
@@ -278,13 +286,13 @@ exports.StringOption = StringOption;
 /**
  * all defined assignments for instancing Options
  */
-var optionConstructors = {};
+var OptionConstructors = {};
 function defineOptionConstructor(constructor, code, name, repeatable) {
     var args = [];
     for (var _i = 4; _i < arguments.length; _i++) {
         args[_i - 4] = arguments[_i];
     }
-    optionConstructors[code] = optionConstructors[name] = (_a = constructor.create).bind.apply(_a, [constructor].concat([code, name, repeatable].concat(args)));
+    OptionConstructors[code] = OptionConstructors[name] = (_a = constructor.create).bind.apply(_a, [constructor].concat([code, name, repeatable].concat(args)));
     var _a;
 }
 defineOptionConstructor(NumericOption, 7, "Uri-Port", false, 2);
@@ -302,4 +310,10 @@ defineOptionConstructor(StringOption, 15, "Uri-Query", true, 0, 255);
 defineOptionConstructor(StringOption, 20, "Location-Query", true, 0, 255);
 defineOptionConstructor(StringOption, 35, "Proxy-Uri", true, 1, 1034);
 defineOptionConstructor(StringOption, 39, "Proxy-Scheme", true, 1, 255);
+exports.Options = Object.freeze({
+    UriHost: function (hostname) { return OptionConstructors["Uri-Host"](Buffer.from(hostname)); },
+    UriPort: function (port) { return OptionConstructors["Uri-Port"](numberToBuffer(port)); },
+    UriPath: function (pathname) { return OptionConstructors["Uri-Path"](Buffer.from(pathname)); },
+    ContentFormat: function (format) { return OptionConstructors["Content-Format"](numberToBuffer(format)); },
+});
 //# sourceMappingURL=Option.js.map
