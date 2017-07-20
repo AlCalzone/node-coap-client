@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+var Option_1 = require("./Option");
 var MessageType;
 (function (MessageType) {
     MessageType[MessageType["CON"] = 0] = "CON";
@@ -10,6 +11,9 @@ var MessageType;
 function code(major, minor) {
     return ((major & 7) << 5) + (minor & 31);
 }
+/**
+ * all defined message codes
+ */
 exports.MessageCode = Object.freeze({
     empty: code(0, 0),
     request: {
@@ -46,6 +50,9 @@ exports.MessageCode = Object.freeze({
         proxyingNotSupported: code(5, 5),
     },
 });
+/**
+ * represents a CoAP message
+ */
 var Message = (function () {
     function Message(version, type, code, messageId, token, options, payload) {
         this.version = version;
@@ -69,42 +76,66 @@ var Message = (function () {
         var token = Buffer.alloc(tokenLength);
         if (tokenLength > 0)
             buf.copy(token, 0, 4, 4 + tokenLength);
+        // parse options
         var optionsStart = 4 + tokenLength;
-        var payload;
-        if (buf[optionsStart] !== 0xff) {
-            // here comes an options entry
-            // we don't support this yet
-            throw new Error("CoAP options are not supported yet");
+        var options = [];
+        var prevCode = 0; // code of the previously read option 
+        while (optionsStart < buf.length && buf[optionsStart] !== 0xff) {
+            // read option
+            var result = Option_1.Option.parse(buf.slice(optionsStart), prevCode);
+            options.push(result.result);
+            prevCode = result.result.code;
+            optionsStart += result.readBytes;
         }
-        else {
+        var payload;
+        if (optionsStart < buf.length && buf[optionsStart] == 0xff) {
+            // here comes the payload
             // copy the remainder of the packet
             payload = Buffer.from(buf.slice(optionsStart + 1));
         }
-        return new Message(version, type, code, messageId, token, [], payload);
+        else {
+            payload = Buffer.from([]);
+        }
+        return new Message(version, type, code, messageId, token, options, payload);
     };
     /**
      * serializes this message into a buffer
      */
     Message.prototype.serialize = function () {
         var tokenLength = this.token ? this.token.length : 0;
-        var ret = Buffer.allocUnsafe(4 + tokenLength + 1 + this.payload.length);
+        // serialize the options first, so we know how many bytes to reserve
+        var optionsBuffer;
+        if (this.options && this.options.length) {
+            optionsBuffer = Buffer.concat(this.options.map(function (o, i, opts) { return o.serialize(i > 0 ? opts[i - 1].code : 0); }));
+        }
+        else {
+            optionsBuffer = Buffer.from([]);
+        }
+        // allocate the buffer to be filled
+        var payloadLength = this.payload ? this.payload.length : -1; // -1 to offset the payload byte for empty payloads
+        var ret = Buffer.allocUnsafe(4 + tokenLength + optionsBuffer.length + 1 + payloadLength);
+        // write fixed values
         ret[0] = ((this.version & 3) << 6)
             + ((this.type & 3) << 4)
             + (tokenLength & 15);
         ret[1] = this.code;
         ret[2] = (this.messageId >>> 8) & 0xff;
         ret[3] = this.messageId & 0xff;
+        // write the token if neccessary
         if (tokenLength > 0) {
             this.token.copy(ret, 4);
         }
-        var optionsStart = 4 + tokenLength;
-        if (this.options && this.options.length) {
-            // write options entries
-            // not supported yet
-            throw new Error("CoAP options are not supported yet");
+        // write the options where they belong (if any)
+        var offset = 4 + tokenLength;
+        if (optionsBuffer.length > 0) {
+            optionsBuffer.copy(ret, offset);
+            offset += optionsBuffer.length;
         }
-        ret[optionsStart] = 0xff;
-        this.payload.copy(ret, optionsStart + 1);
+        // write the payload where it belongs
+        if (payloadLength > 0) {
+            ret[offset] = 0xff;
+            this.payload.copy(ret, offset + 1);
+        }
         return ret;
     };
     return Message;

@@ -30,7 +30,7 @@ export abstract class Option {
 
 /*
 
-     0   1   2   3   4   5   6   7
+	 0   1   2   3   4   5   6   7
    +---------------+---------------+
    |  Option Delta | Option Length |   1 byte
    +---------------+---------------+
@@ -172,7 +172,7 @@ export class NumericOption extends Option {
 	}
 
 	public get value(): number {
-		return this.rawValue.reduce((acc, cur) => acc * 255 + cur, 0);
+		return this.rawValue.reduce((acc, cur) => acc * 256 + cur, 0);
 	}
 	public set value(value: number) {
 		const ret = [];

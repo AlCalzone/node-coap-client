@@ -1,10 +1,14 @@
 /// <reference types="node" />
+import { Option } from "./Option";
 export declare enum MessageType {
     CON = 0,
     NON = 1,
     ACK = 2,
     RST = 3,
 }
+/**
+ * all defined message codes
+ */
 export declare const MessageCode: Readonly<{
     empty: number;
     request: {
@@ -41,15 +45,18 @@ export declare const MessageCode: Readonly<{
         proxyingNotSupported: number;
     };
 }>;
+/**
+ * represents a CoAP message
+ */
 export declare class Message {
     version: number;
     type: MessageType;
     code: number;
     messageId: number;
     token: Buffer;
-    options: any[];
+    options: Option[];
     payload: Buffer;
-    constructor(version: number, type: MessageType, code: number, messageId: number, token: Buffer, options: any[], payload: Buffer);
+    constructor(version: number, type: MessageType, code: number, messageId: number, token: Buffer, options: Option[], payload: Buffer);
     /**
      * parses a CoAP message from the given buffer
      * @param buf - the buffer to read from
