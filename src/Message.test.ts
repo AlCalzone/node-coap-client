@@ -1,12 +1,12 @@
 ﻿import { expect } from "chai";
 
-import { Message, MessageType } from "./Message";
+import { Message, MessageType, MessageCode, MessageCodes } from "./Message";
 
 describe('Message Tests =>', () => {
 
 	it('serialize', () => {
 		const msg = new Message(
-			1, MessageType.ACK, 0, 0x1234, null, null, Buffer.from("abcdef", "hex")
+			1, MessageType.ACK, MessageCodes.empty, 0x1234, null, null, Buffer.from("abcdef", "hex")
 		);
 		const expected = Buffer.from([
 			0b01100000, 0, 0x12, 0x34, 0xff, 0xab, 0xcd, 0xef

@@ -7,50 +7,78 @@ export enum MessageType {
 	RST = 3, // Reset
 }
 
-function code(major: number, minor: number) {
-	return ((major & 0b111) << 5) + (minor & 0b11111);
+export class MessageCode {
+	constructor(
+		public readonly major: number,
+		public readonly minor: number
+	) { }
+
+	static fromValue(value: number) {
+		return new MessageCode(
+			(value >>> 5) & 0b111,
+			value & 0b11111
+		);
+	}
+
+	public get value(): number {
+		return ((this.major & 0b111) << 5) + (this.minor & 0b11111);
+	}
+
+	isEmpty() { return this.value === MessageCodes.empty.value };
+	isRequest() { return (!this.isEmpty()) && (this.major === MessageCodes.request.__major) };
+	isResponse() {
+		return (this.major === MessageCodes.success.__major) ||
+			(this.major === MessageCodes.clientError.__major) ||
+			(this.major === MessageCodes.serverError.__major)
+			;
+	}
 }
+
 /**
  * all defined message codes
  */
-export const MessageCode = Object.freeze({
-	empty: code(0, 0),
+export const MessageCodes = Object.freeze({
+	empty: new MessageCode(0, 0),
 
 	request: {
-		get: code(0, 1),
-		post: code(0, 2),
-		put: code(0, 3),
-		delete: code(0, 4)
+		__major: 0,
+		get: new MessageCode(0, 1),
+		post: new MessageCode(0, 2),
+		put: new MessageCode(0, 3),
+		delete: new MessageCode(0, 4)
 	},
 
 	success: {
-		created: code(2, 1),
-		deleted: code(2, 2),
-		valid: code(2, 3),
-		changed: code(2, 4),
-		content: code(2, 5),
+		__major: 2,
+		created: new MessageCode(2, 1),
+		deleted: new MessageCode(2, 2),
+		valid: new MessageCode(2, 3),
+		changed: new MessageCode(2, 4),
+		content: new MessageCode(2, 5),
 	},
 
 	clientError: {
-		badRequest: code(4, 0),
-		unauthorized: code(4, 1),
-		badOption: code(4, 2),
-		forbidden: code(4, 3),
-		notFound: code(4, 4),
-		methodNotAllowed: code(4, 5),
-		notAcceptable: code(4, 6),
-		preconditionFailed: code(4, 12),
-		requestEntityTooLarge: code(4, 13),
-		unsupportedContentFormat: code(4, 15),
+		__major: 4,
+		badRequest: new MessageCode(4, 0),
+		unauthorized: new MessageCode(4, 1),
+		badOption: new MessageCode(4, 2),
+		forbidden: new MessageCode(4, 3),
+		notFound: new MessageCode(4, 4),
+		methodNotAllowed: new MessageCode(4, 5),
+		notAcceptable: new MessageCode(4, 6),
+		preconditionFailed: new MessageCode(4, 12),
+		requestEntityTooLarge: new MessageCode(4, 13),
+		unsupportedContentFormat: new MessageCode(4, 15),
 	},
 
 	serverError: {
-		internalServerError: code(5, 0),
-		notImplemented: code(5, 1),
-		badGateway: code(5, 2),
-		serviceUnavailable: code(5, 3),
-		gatewayTimeout: code(5, 4),
-		proxyingNotSupported: code(5, 5),
+		__major: 5,
+		internalServerError: new MessageCode(5, 0),
+		notImplemented: new MessageCode(5, 1),
+		badGateway: new MessageCode(5, 2),
+		serviceUnavailable: new MessageCode(5, 3),
+		gatewayTimeout: new MessageCode(5, 4),
+		proxyingNotSupported: new MessageCode(5, 5),
 	},
 
 });
@@ -63,7 +91,7 @@ export class Message {
 	constructor(
 		public version: number,
 		public type: MessageType,
-		public code: number,
+		public code: MessageCode,
 		public messageId: number,
 		public token: Buffer,
 		public options: Option[],
@@ -81,7 +109,7 @@ export class Message {
 		const type = (buf[0] >>> 4) & 0b11;
 		const tokenLength = buf[0] & 0b1111;
 
-		const code = buf[1];
+		const code = MessageCode.fromValue(buf[1]);
 
 		const messageId = buf[2] * 256 + buf[3];
 
@@ -132,7 +160,7 @@ export class Message {
 		}
 
 		// allocate the buffer to be filled
-		const payloadLength = this.payload ? this.payload.length : -1; // -1 to offset the payload byte for empty payloads
+		const payloadLength = (this.payload && this.payload.length > 0) ? this.payload.length : -1; // -1 to offset the payload byte for empty payloads
 		const ret = Buffer.allocUnsafe(4 + tokenLength + optionsBuffer.length + 1 + payloadLength);
 
 		// write fixed values
@@ -140,7 +168,7 @@ export class Message {
 			+ ((this.type & 0b11) << 4)
 			+ (tokenLength & 0b1111)
 			;
-		ret[1] = this.code;
+		ret[1] = this.code.value;
 		ret[2] = (this.messageId >>> 8) & 0xff;
 		ret[3] = this.messageId & 0xff;
 

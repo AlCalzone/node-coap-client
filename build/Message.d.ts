@@ -6,43 +6,57 @@ export declare enum MessageType {
     ACK = 2,
     RST = 3,
 }
+export declare class MessageCode {
+    readonly major: number;
+    readonly minor: number;
+    constructor(major: number, minor: number);
+    static fromValue(value: number): MessageCode;
+    readonly value: number;
+    isEmpty(): boolean;
+    isRequest(): boolean;
+    isResponse(): boolean;
+}
 /**
  * all defined message codes
  */
-export declare const MessageCode: Readonly<{
-    empty: number;
+export declare const MessageCodes: Readonly<{
+    empty: MessageCode;
     request: {
-        get: number;
-        post: number;
-        put: number;
-        delete: number;
+        __major: number;
+        get: MessageCode;
+        post: MessageCode;
+        put: MessageCode;
+        delete: MessageCode;
     };
     success: {
-        created: number;
-        deleted: number;
-        valid: number;
-        changed: number;
-        content: number;
+        __major: number;
+        created: MessageCode;
+        deleted: MessageCode;
+        valid: MessageCode;
+        changed: MessageCode;
+        content: MessageCode;
     };
     clientError: {
-        badRequest: number;
-        unauthorized: number;
-        badOption: number;
-        forbidden: number;
-        notFound: number;
-        methodNotAllowed: number;
-        notAcceptable: number;
-        preconditionFailed: number;
-        requestEntityTooLarge: number;
-        unsupportedContentFormat: number;
+        __major: number;
+        badRequest: MessageCode;
+        unauthorized: MessageCode;
+        badOption: MessageCode;
+        forbidden: MessageCode;
+        notFound: MessageCode;
+        methodNotAllowed: MessageCode;
+        notAcceptable: MessageCode;
+        preconditionFailed: MessageCode;
+        requestEntityTooLarge: MessageCode;
+        unsupportedContentFormat: MessageCode;
     };
     serverError: {
-        internalServerError: number;
-        notImplemented: number;
-        badGateway: number;
-        serviceUnavailable: number;
-        gatewayTimeout: number;
-        proxyingNotSupported: number;
+        __major: number;
+        internalServerError: MessageCode;
+        notImplemented: MessageCode;
+        badGateway: MessageCode;
+        serviceUnavailable: MessageCode;
+        gatewayTimeout: MessageCode;
+        proxyingNotSupported: MessageCode;
     };
 }>;
 /**
@@ -51,12 +65,12 @@ export declare const MessageCode: Readonly<{
 export declare class Message {
     version: number;
     type: MessageType;
-    code: number;
+    code: MessageCode;
     messageId: number;
     token: Buffer;
     options: Option[];
     payload: Buffer;
-    constructor(version: number, type: MessageType, code: number, messageId: number, token: Buffer, options: Option[], payload: Buffer);
+    constructor(version: number, type: MessageType, code: MessageCode, messageId: number, token: Buffer, options: Option[], payload: Buffer);
     /**
      * parses a CoAP message from the given buffer
      * @param buf - the buffer to read from

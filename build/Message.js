@@ -8,46 +8,74 @@ var MessageType;
     MessageType[MessageType["ACK"] = 2] = "ACK";
     MessageType[MessageType["RST"] = 3] = "RST";
 })(MessageType = exports.MessageType || (exports.MessageType = {}));
-function code(major, minor) {
-    return ((major & 7) << 5) + (minor & 31);
-}
+var MessageCode = (function () {
+    function MessageCode(major, minor) {
+        this.major = major;
+        this.minor = minor;
+    }
+    MessageCode.fromValue = function (value) {
+        return new MessageCode((value >>> 5) & 7, value & 31);
+    };
+    Object.defineProperty(MessageCode.prototype, "value", {
+        get: function () {
+            return ((this.major & 7) << 5) + (this.minor & 31);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    MessageCode.prototype.isEmpty = function () { return this.value === exports.MessageCodes.empty.value; };
+    ;
+    MessageCode.prototype.isRequest = function () { return (!this.isEmpty()) && (this.major === exports.MessageCodes.request.__major); };
+    ;
+    MessageCode.prototype.isResponse = function () {
+        return (this.major === exports.MessageCodes.success.__major) ||
+            (this.major === exports.MessageCodes.clientError.__major) ||
+            (this.major === exports.MessageCodes.serverError.__major);
+    };
+    return MessageCode;
+}());
+exports.MessageCode = MessageCode;
 /**
  * all defined message codes
  */
-exports.MessageCode = Object.freeze({
-    empty: code(0, 0),
+exports.MessageCodes = Object.freeze({
+    empty: new MessageCode(0, 0),
     request: {
-        get: code(0, 1),
-        post: code(0, 2),
-        put: code(0, 3),
-        delete: code(0, 4)
+        __major: 0,
+        get: new MessageCode(0, 1),
+        post: new MessageCode(0, 2),
+        put: new MessageCode(0, 3),
+        delete: new MessageCode(0, 4)
     },
     success: {
-        created: code(2, 1),
-        deleted: code(2, 2),
-        valid: code(2, 3),
-        changed: code(2, 4),
-        content: code(2, 5),
+        __major: 2,
+        created: new MessageCode(2, 1),
+        deleted: new MessageCode(2, 2),
+        valid: new MessageCode(2, 3),
+        changed: new MessageCode(2, 4),
+        content: new MessageCode(2, 5),
     },
     clientError: {
-        badRequest: code(4, 0),
-        unauthorized: code(4, 1),
-        badOption: code(4, 2),
-        forbidden: code(4, 3),
-        notFound: code(4, 4),
-        methodNotAllowed: code(4, 5),
-        notAcceptable: code(4, 6),
-        preconditionFailed: code(4, 12),
-        requestEntityTooLarge: code(4, 13),
-        unsupportedContentFormat: code(4, 15),
+        __major: 4,
+        badRequest: new MessageCode(4, 0),
+        unauthorized: new MessageCode(4, 1),
+        badOption: new MessageCode(4, 2),
+        forbidden: new MessageCode(4, 3),
+        notFound: new MessageCode(4, 4),
+        methodNotAllowed: new MessageCode(4, 5),
+        notAcceptable: new MessageCode(4, 6),
+        preconditionFailed: new MessageCode(4, 12),
+        requestEntityTooLarge: new MessageCode(4, 13),
+        unsupportedContentFormat: new MessageCode(4, 15),
     },
     serverError: {
-        internalServerError: code(5, 0),
-        notImplemented: code(5, 1),
-        badGateway: code(5, 2),
-        serviceUnavailable: code(5, 3),
-        gatewayTimeout: code(5, 4),
-        proxyingNotSupported: code(5, 5),
+        __major: 5,
+        internalServerError: new MessageCode(5, 0),
+        notImplemented: new MessageCode(5, 1),
+        badGateway: new MessageCode(5, 2),
+        serviceUnavailable: new MessageCode(5, 3),
+        gatewayTimeout: new MessageCode(5, 4),
+        proxyingNotSupported: new MessageCode(5, 5),
     },
 });
 /**
@@ -71,7 +99,7 @@ var Message = (function () {
         var version = (buf[0] >>> 6) & 3;
         var type = (buf[0] >>> 4) & 3;
         var tokenLength = buf[0] & 15;
-        var code = buf[1];
+        var code = MessageCode.fromValue(buf[1]);
         var messageId = buf[2] * 256 + buf[3];
         var token = Buffer.alloc(tokenLength);
         if (tokenLength > 0)
@@ -112,13 +140,13 @@ var Message = (function () {
             optionsBuffer = Buffer.from([]);
         }
         // allocate the buffer to be filled
-        var payloadLength = this.payload ? this.payload.length : -1; // -1 to offset the payload byte for empty payloads
+        var payloadLength = (this.payload && this.payload.length > 0) ? this.payload.length : -1; // -1 to offset the payload byte for empty payloads
         var ret = Buffer.allocUnsafe(4 + tokenLength + optionsBuffer.length + 1 + payloadLength);
         // write fixed values
         ret[0] = ((this.version & 3) << 6)
             + ((this.type & 3) << 4)
             + (tokenLength & 15);
-        ret[1] = this.code;
+        ret[1] = this.code.value;
         ret[2] = (this.messageId >>> 8) & 0xff;
         ret[3] = this.messageId & 0xff;
         // write the token if neccessary
