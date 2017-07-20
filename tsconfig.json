@@ -3,12 +3,14 @@
     "compilerOptions": {
         "declaration": true,
         "module": "commonjs",
+        "moduleResolution": "node",
         "noEmitOnError": false,
         "noImplicitAny": false,
         "outDir": "build/",
         "removeComments": false,
         "sourceMap": true,
         "sourceRoot": "src/",
-        "target": "es5"
+        "target": "es5",
+        "lib": ["es6"]
     }
 }
