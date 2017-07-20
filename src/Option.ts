@@ -306,6 +306,7 @@ function defineOptionConstructor(
 	OptionConstructors[code] = OptionConstructors[name] = 
 		(constructor as any).create.bind(constructor, ...[code, name, repeatable, ...args]);
 }
+defineOptionConstructor(NumericOption, 6, "Observe", false, 3);
 defineOptionConstructor(NumericOption, 7, "Uri-Port", false, 2);
 defineOptionConstructor(NumericOption, 12, "Content-Format", false, 2);
 defineOptionConstructor(NumericOption, 14, "Max-Age", false, 4);
@@ -329,6 +330,8 @@ export const Options = Object.freeze({
 	UriPort: (port: number) => OptionConstructors["Uri-Port"](numberToBuffer(port)),
 	UriPath: (pathname: string) => OptionConstructors["Uri-Path"](Buffer.from(pathname)),
 
-	ContentFormat: (format: ContentFormats) => OptionConstructors["Content-Format"](numberToBuffer(format)),
+	LocationPath: (pathname: string) => OptionConstructors["Location-Path"](Buffer.from(pathname)),
 
+	ContentFormat: (format: ContentFormats) => OptionConstructors["Content-Format"](numberToBuffer(format)),
+	Observe: (observe: boolean) => OptionConstructors["Observe"](Buffer.from([observe ? 0 : 1])),
 });

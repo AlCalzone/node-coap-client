@@ -295,6 +295,7 @@ function defineOptionConstructor(constructor, code, name, repeatable) {
     OptionConstructors[code] = OptionConstructors[name] = (_a = constructor.create).bind.apply(_a, [constructor].concat([code, name, repeatable].concat(args)));
     var _a;
 }
+defineOptionConstructor(NumericOption, 6, "Observe", false, 3);
 defineOptionConstructor(NumericOption, 7, "Uri-Port", false, 2);
 defineOptionConstructor(NumericOption, 12, "Content-Format", false, 2);
 defineOptionConstructor(NumericOption, 14, "Max-Age", false, 4);
@@ -314,6 +315,8 @@ exports.Options = Object.freeze({
     UriHost: function (hostname) { return OptionConstructors["Uri-Host"](Buffer.from(hostname)); },
     UriPort: function (port) { return OptionConstructors["Uri-Port"](numberToBuffer(port)); },
     UriPath: function (pathname) { return OptionConstructors["Uri-Path"](Buffer.from(pathname)); },
+    LocationPath: function (pathname) { return OptionConstructors["Location-Path"](Buffer.from(pathname)); },
     ContentFormat: function (format) { return OptionConstructors["Content-Format"](numberToBuffer(format)); },
+    Observe: function (observe) { return OptionConstructors["Observe"](Buffer.from([observe ? 0 : 1])); },
 });
 //# sourceMappingURL=Option.js.map
