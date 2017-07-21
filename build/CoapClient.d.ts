@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import { MessageCode } from "./Message";
+import { ContentFormats } from "./ContentFormats";
 import * as nodeUrl from "url";
 export declare type RequestMethod = "get" | "post" | "put" | "delete";
 /** Options to control CoAP requests */
@@ -8,11 +9,10 @@ export interface RequestOptions {
     keepAlive?: boolean;
     /** Whether we expect a confirmation of the request */
     confirmable?: boolean;
-    /** Whether we want to receive updates */
-    observe?: boolean;
 }
 export interface CoapResponse {
     code: MessageCode;
+    format: ContentFormats;
     payload?: Buffer;
 }
 export interface SecurityParameters {
@@ -44,6 +44,14 @@ export declare class CoapClient {
      * @param options - Various options to control the request.
      */
     static request(url: string | nodeUrl.Url, method: RequestMethod, payload?: Buffer, options?: RequestOptions): Promise<CoapResponse>;
+    /**
+     * Observes a CoAP resource
+     * @param url - The URL to be requested. Must start with coap:// or coaps://
+     * @param method - The request method to be used
+     * @param payload - The optional payload to be attached to the request
+     * @param options - Various options to control the request.
+     */
+    static observe(url: string | nodeUrl.Url, method: RequestMethod, callback: (resp: CoapResponse) => void, payload?: Buffer, options?: RequestOptions): Promise<void>;
     /**
      * Stops observation of the given url
      */

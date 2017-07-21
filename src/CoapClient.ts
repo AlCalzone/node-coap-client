@@ -2,7 +2,7 @@ import { EventEmitter } from "events";
 import { dtls } from "node-dtls-client";
 import * as dgram from "dgram";
 import { MessageType, MessageCode, MessageCodes, Message } from "./Message";
-import { Option, Options } from "./Option";
+import { Option, Options, NumericOption, StringOption, BinaryOption } from "./Option";
 import { ContentFormats } from "./ContentFormats";
 import * as nodeUrl from "url";
 import * as crypto from "crypto";
@@ -17,12 +17,11 @@ export interface RequestOptions {
     keepAlive?: boolean
     /** Whether we expect a confirmation of the request */
     confirmable?: boolean
-	/** Whether we want to receive updates */
-	observe?: boolean
 }
 
 export interface CoapResponse {
-    code: MessageCode,
+	code: MessageCode,
+	format: ContentFormats
     payload?: Buffer
 }
 
@@ -59,7 +58,8 @@ interface ConnectionInfo {
 interface PendingRequest {
 	origin: string,
 	token: Buffer,
-	callback: Promise<CoapResponse>,
+	promise: Promise<CoapResponse>,
+	callback: (resp: CoapResponse) => void,
 	keepAlive: boolean,
 	observe: boolean
 }
@@ -118,6 +118,16 @@ function incrementMessageID(msgId: number): number {
 	return (++msgId > 0xffff) ? msgId : 1;
 }
 
+function findOption(opts: Option[], name: string): Option {
+	for (let opt of opts) {
+		if (opt.name === name) return opt;
+	}
+}
+
+function findOptions(opts: Option[], name: string): Option[] {
+	return opts.filter(opt => opt.name === name);
+}
+
 /**
  * provides methods to access CoAP server resources
  */
@@ -161,7 +171,6 @@ export class CoapClient {
 		// ensure we have options and set the default params
 		options = options || {};
 		options.confirmable = options.confirmable || true;
-		options.observe = options.observe || false;
 		options.keepAlive = options.keepAlive || true;
 
 		// retrieve or create the connection we're going to use
@@ -181,8 +190,8 @@ export class CoapClient {
 
 		// create message options, be careful to order them by code, no sorting is implemented yet
 		const msgOptions: Option[] = [];
-		// [6] observe or not?
-		msgOptions.push(Options.Observe(options.observe))
+		//// [6] observe or not?
+		//msgOptions.push(Options.Observe(options.observe))
 		// [11] path of the request
 		let pathname = url.pathname || "";
 		while (pathname.startsWith("/")) { pathname = pathname.slice(1); }
@@ -202,20 +211,93 @@ export class CoapClient {
 			origin: originString,
 			token,
 			keepAlive: options.keepAlive,
-			callback: response,
-			observe: options.observe
+			promise: response,
+			callback: null,
+			observe: false
 		}
 		CoapClient.pendingRequests[tokenString] = req;
-		// if we are observing, also remember that
-		if (options.observe) {
-			CoapClient.activeObserveTokens[urlToString(url)] = tokenString;
-		}
 
 		// now send the message
 		CoapClient.send(connection, type, code, messageId, token, msgOptions, payload);
 
 		return response;
 		
+	}
+
+    /**
+     * Observes a CoAP resource 
+     * @param url - The URL to be requested. Must start with coap:// or coaps://
+     * @param method - The request method to be used
+     * @param payload - The optional payload to be attached to the request
+     * @param options - Various options to control the request.
+     */
+	static async observe(
+		url: string | nodeUrl.Url,
+		method: RequestMethod,
+		callback: (resp: CoapResponse) => void,
+		payload?: Buffer,
+		options?: RequestOptions
+	): Promise<void> {
+
+		// parse/convert url
+		if (typeof url === "string") {
+			url = nodeUrl.parse(url);
+		}
+
+		// ensure we have options and set the default params
+		options = options || {};
+		options.confirmable = options.confirmable || true;
+		options.keepAlive = options.keepAlive || true;
+
+		// retrieve or create the connection we're going to use
+		const
+			origin = Origin.fromUrl(url),
+			originString = origin.toString()
+			;
+		const connection = await this.getConnection(origin);
+
+		// find all the message parameters
+		const type = options.confirmable ? MessageType.CON : MessageType.NON;
+		const code = MessageCodes.request[method];
+		const messageId = connection.lastMsgId = incrementMessageID(connection.lastMsgId);
+		const token = connection.lastToken = incrementToken(connection.lastToken);
+		const tokenString = token.toString("hex");
+		payload = payload || Buffer.from([]);
+
+		// create message options, be careful to order them by code, no sorting is implemented yet
+		const msgOptions: Option[] = [];
+		// [6] observe?
+		msgOptions.push(Options.Observe(true))
+		// [11] path of the request
+		let pathname = url.pathname || "";
+		while (pathname.startsWith("/")) { pathname = pathname.slice(1); }
+		while (pathname.endsWith("/")) { pathname = pathname.slice(0, -1); }
+		const pathParts = pathname.split("/");
+		msgOptions.push(
+			...pathParts.map(part => Options.UriPath(part))
+		);
+		// [12] content format
+		msgOptions.push(Options.ContentFormat(ContentFormats.application_json));
+
+		// create the promise we're going to return
+		const response = createDeferredPromise<CoapResponse>();
+
+		// remember the request
+		const req: PendingRequest = {
+			origin: originString,
+			token,
+			keepAlive: options.keepAlive,
+			callback,
+			observe: true,
+			promise: null
+		}
+		CoapClient.pendingRequests[tokenString] = req;
+		// also remember that we are observing
+		CoapClient.activeObserveTokens[urlToString(url)] = tokenString;
+
+		// now send the message
+		CoapClient.send(connection, type, code, messageId, token, msgOptions, payload);
+
 	}
 
 	/**
@@ -259,18 +341,34 @@ export class CoapClient {
 				// this message has a token, check which request it belongs to
 				const tokenString = coapMsg.token.toString("hex");
 				if (CoapClient.pendingRequests.hasOwnProperty(tokenString)) {
-					// read the request and remove it from the table (if not observed)
 					const request = CoapClient.pendingRequests[tokenString];
-					if (!request.observe) delete CoapClient.pendingRequests[tokenString];
+
+					let contentFormat: ContentFormats = null;
+					// parse options
+					if (coapMsg.options && coapMsg.options.length) {
+						// see if the response contains information about the content format
+						const optCntFmt = findOption(coapMsg.options, "Content-Format");
+						if (optCntFmt) contentFormat = (optCntFmt as NumericOption).value;
+					}
 
 					// prepare the response
 					const response: CoapResponse = {
 						code: coapMsg.code,
+						format: contentFormat,
 						payload: coapMsg.payload
 					};
 
-					// resolve the promise
-					(request.callback as DeferredPromise<CoapResponse>).resolve(response);
+					if (request.observe) {
+						// call the callback
+						request.callback(response);
+					} else {
+						// resolve the promise
+						(request.promise as DeferredPromise<CoapResponse>).resolve(response);
+						// after handling one-time requests, delete the info about them
+						delete CoapClient.pendingRequests[tokenString];
+					}
+
+
 				} else {
 					// no request found for this token, send RST so the server stops sending
 

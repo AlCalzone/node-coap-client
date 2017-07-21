@@ -121,6 +121,16 @@ function incrementToken(token) {
 function incrementMessageID(msgId) {
     return (++msgId > 0xffff) ? msgId : 1;
 }
+function findOption(opts, name) {
+    for (var _i = 0, opts_1 = opts; _i < opts_1.length; _i++) {
+        var opt = opts_1[_i];
+        if (opt.name === name)
+            return opt;
+    }
+}
+function findOptions(opts, name) {
+    return opts.filter(function (opt) { return opt.name === name; });
+}
 /**
  * provides methods to access CoAP server resources
  */
@@ -153,7 +163,6 @@ var CoapClient = (function () {
                         // ensure we have options and set the default params
                         options = options || {};
                         options.confirmable = options.confirmable || true;
-                        options.observe = options.observe || false;
                         options.keepAlive = options.keepAlive || true;
                         origin = Origin.fromUrl(url), originString = origin.toString();
                         return [4 /*yield*/, this.getConnection(origin)];
@@ -166,8 +175,6 @@ var CoapClient = (function () {
                         tokenString = token.toString("hex");
                         payload = payload || Buffer.from([]);
                         msgOptions = [];
-                        // [6] observe or not?
-                        msgOptions.push(Option_1.Options.Observe(options.observe));
                         pathname = url.pathname || "";
                         while (pathname.startsWith("/")) {
                             pathname = pathname.slice(1);
@@ -184,17 +191,78 @@ var CoapClient = (function () {
                             origin: originString,
                             token: token,
                             keepAlive: options.keepAlive,
-                            callback: response,
-                            observe: options.observe
+                            promise: response,
+                            callback: null,
+                            observe: false
                         };
                         CoapClient.pendingRequests[tokenString] = req;
-                        // if we are observing, also remember that
-                        if (options.observe) {
-                            CoapClient.activeObserveTokens[urlToString(url)] = tokenString;
-                        }
                         // now send the message
                         CoapClient.send(connection, type, code, messageId, token, msgOptions, payload);
                         return [2 /*return*/, response];
+                }
+            });
+        });
+    };
+    /**
+     * Observes a CoAP resource
+     * @param url - The URL to be requested. Must start with coap:// or coaps://
+     * @param method - The request method to be used
+     * @param payload - The optional payload to be attached to the request
+     * @param options - Various options to control the request.
+     */
+    CoapClient.observe = function (url, method, callback, payload, options) {
+        return __awaiter(this, void 0, void 0, function () {
+            var origin, originString, connection, type, code, messageId, token, tokenString, msgOptions, pathname, pathParts, response, req;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        // parse/convert url
+                        if (typeof url === "string") {
+                            url = nodeUrl.parse(url);
+                        }
+                        // ensure we have options and set the default params
+                        options = options || {};
+                        options.confirmable = options.confirmable || true;
+                        options.keepAlive = options.keepAlive || true;
+                        origin = Origin.fromUrl(url), originString = origin.toString();
+                        return [4 /*yield*/, this.getConnection(origin)];
+                    case 1:
+                        connection = _a.sent();
+                        type = options.confirmable ? Message_1.MessageType.CON : Message_1.MessageType.NON;
+                        code = Message_1.MessageCodes.request[method];
+                        messageId = connection.lastMsgId = incrementMessageID(connection.lastMsgId);
+                        token = connection.lastToken = incrementToken(connection.lastToken);
+                        tokenString = token.toString("hex");
+                        payload = payload || Buffer.from([]);
+                        msgOptions = [];
+                        // [6] observe?
+                        msgOptions.push(Option_1.Options.Observe(true));
+                        pathname = url.pathname || "";
+                        while (pathname.startsWith("/")) {
+                            pathname = pathname.slice(1);
+                        }
+                        while (pathname.endsWith("/")) {
+                            pathname = pathname.slice(0, -1);
+                        }
+                        pathParts = pathname.split("/");
+                        msgOptions.push.apply(msgOptions, pathParts.map(function (part) { return Option_1.Options.UriPath(part); }));
+                        // [12] content format
+                        msgOptions.push(Option_1.Options.ContentFormat(ContentFormats_1.ContentFormats.application_json));
+                        response = DeferredPromise_1.createDeferredPromise();
+                        req = {
+                            origin: originString,
+                            token: token,
+                            keepAlive: options.keepAlive,
+                            callback: callback,
+                            observe: true,
+                            promise: null
+                        };
+                        CoapClient.pendingRequests[tokenString] = req;
+                        // also remember that we are observing
+                        CoapClient.activeObserveTokens[urlToString(url)] = tokenString;
+                        // now send the message
+                        CoapClient.send(connection, type, code, messageId, token, msgOptions, payload);
+                        return [2 /*return*/];
                 }
             });
         });
@@ -239,17 +307,31 @@ var CoapClient = (function () {
                 // this message has a token, check which request it belongs to
                 var tokenString = coapMsg.token.toString("hex");
                 if (CoapClient.pendingRequests.hasOwnProperty(tokenString)) {
-                    // read the request and remove it from the table (if not observed)
                     var request = CoapClient.pendingRequests[tokenString];
-                    if (!request.observe)
-                        delete CoapClient.pendingRequests[tokenString];
+                    var contentFormat = null;
+                    // parse options
+                    if (coapMsg.options && coapMsg.options.length) {
+                        // see if the response contains information about the content format
+                        var optCntFmt = findOption(coapMsg.options, "Content-Format");
+                        if (optCntFmt)
+                            contentFormat = optCntFmt.value;
+                    }
                     // prepare the response
                     var response = {
                         code: coapMsg.code,
+                        format: contentFormat,
                         payload: coapMsg.payload
                     };
-                    // resolve the promise
-                    request.callback.resolve(response);
+                    if (request.observe) {
+                        // call the callback
+                        request.callback(response);
+                    }
+                    else {
+                        // resolve the promise
+                        request.promise.resolve(response);
+                        // after handling one-time requests, delete the info about them
+                        delete CoapClient.pendingRequests[tokenString];
+                    }
                 }
                 else {
                     // no request found for this token, send RST so the server stops sending
