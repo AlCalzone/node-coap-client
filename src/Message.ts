@@ -32,6 +32,8 @@ export class MessageCode {
 			(this.major === MessageCodes.serverError.__major)
 			;
 	}
+
+	toString() { return `${this.major}.${this.minor < 10 ? "0" : ""}${this.minor}` };
 }
 
 /**

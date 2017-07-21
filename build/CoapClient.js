@@ -119,7 +119,7 @@ function incrementToken(token) {
     return token;
 }
 function incrementMessageID(msgId) {
-    return (++msgId > 0xffff) ? msgId : 1;
+    return (++msgId > 0xffff) ? 1 : msgId;
 }
 function findOption(opts, name) {
     for (var _i = 0, opts_1 = opts; _i < opts_1.length; _i++) {
@@ -188,6 +188,7 @@ var CoapClient = (function () {
                         msgOptions.push(Option_1.Options.ContentFormat(ContentFormats_1.ContentFormats.application_json));
                         response = DeferredPromise_1.createDeferredPromise();
                         req = {
+                            connection: connection,
                             origin: originString,
                             token: token,
                             keepAlive: options.keepAlive,
@@ -250,6 +251,7 @@ var CoapClient = (function () {
                         msgOptions.push(Option_1.Options.ContentFormat(ContentFormats_1.ContentFormats.application_json));
                         response = DeferredPromise_1.createDeferredPromise();
                         req = {
+                            connection: connection,
                             origin: originString,
                             token: token,
                             keepAlive: options.keepAlive,
@@ -332,6 +334,10 @@ var CoapClient = (function () {
                         // after handling one-time requests, delete the info about them
                         delete CoapClient.pendingRequests[tokenString];
                     }
+                    // also acknowledge the packet if neccessary
+                    if (coapMsg.type === Message_1.MessageType.CON) {
+                        CoapClient.send(request.connection, Message_1.MessageType.ACK, Message_1.MessageCodes.empty, coapMsg.messageId, null, [], null);
+                    }
                 }
                 else {
                     // no request found for this token, send RST so the server stops sending
@@ -381,7 +387,7 @@ var CoapClient = (function () {
                     case 2:
                         socket = _a.sent();
                         // add the event handler
-                        socket.on("message", CoapClient.bind(CoapClient, originString));
+                        socket.on("message", CoapClient.onMessage.bind(CoapClient, originString));
                         ret = CoapClient.connections[originString] = {
                             origin: origin,
                             socket: socket,

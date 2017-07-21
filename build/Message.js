@@ -32,6 +32,8 @@ var MessageCode = (function () {
             (this.major === exports.MessageCodes.clientError.__major) ||
             (this.major === exports.MessageCodes.serverError.__major);
     };
+    MessageCode.prototype.toString = function () { return this.major + "." + (this.minor < 10 ? "0" : "") + this.minor; };
+    ;
     return MessageCode;
 }());
 exports.MessageCode = MessageCode;

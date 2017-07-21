@@ -15,6 +15,7 @@ export declare class MessageCode {
     isEmpty(): boolean;
     isRequest(): boolean;
     isResponse(): boolean;
+    toString(): string;
 }
 /**
  * all defined message codes

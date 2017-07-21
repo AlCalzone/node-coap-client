@@ -57,6 +57,7 @@ interface ConnectionInfo {
 
 interface PendingRequest {
 	origin: string,
+	connection: ConnectionInfo,
 	token: Buffer,
 	promise: Promise<CoapResponse>,
 	callback: (resp: CoapResponse) => void,
@@ -115,7 +116,7 @@ function incrementToken(token: Buffer): Buffer {
 }
 
 function incrementMessageID(msgId: number): number {
-	return (++msgId > 0xffff) ? msgId : 1;
+	return (++msgId > 0xffff) ? 1 : msgId;
 }
 
 function findOption(opts: Option[], name: string): Option {
@@ -208,6 +209,7 @@ export class CoapClient {
 
 		// remember the request
 		const req: PendingRequest = {
+			connection,
 			origin: originString,
 			token,
 			keepAlive: options.keepAlive,
@@ -284,6 +286,7 @@ export class CoapClient {
 
 		// remember the request
 		const req: PendingRequest = {
+			connection,
 			origin: originString,
 			token,
 			keepAlive: options.keepAlive,
@@ -304,6 +307,7 @@ export class CoapClient {
 	 * Stops observation of the given url
 	 */
 	static stopObserving(url: string | nodeUrl.Url) {
+
 		// parse/convert url
 		if (typeof url === "string") {
 			url = nodeUrl.parse(url);
@@ -368,6 +372,17 @@ export class CoapClient {
 						delete CoapClient.pendingRequests[tokenString];
 					}
 
+					// also acknowledge the packet if neccessary
+					if (coapMsg.type === MessageType.CON) {
+						CoapClient.send(
+							request.connection,
+							MessageType.ACK,
+							MessageCodes.empty,
+							coapMsg.messageId,
+							null, [], null
+						);
+					}
+
 
 				} else {
 					// no request found for this token, send RST so the server stops sending
@@ -384,7 +399,7 @@ export class CoapClient {
 							MessageCodes.empty,
 							coapMsg.messageId,
 							null, [], null
-						)
+						);
 					}
 				}
 			}
@@ -435,7 +450,7 @@ export class CoapClient {
 			// create new socket
 			const socket = await CoapClient.getSocket(origin);
 			// add the event handler
-			socket.on("message", CoapClient.bind(CoapClient, originString));
+			socket.on("message", CoapClient.onMessage.bind(CoapClient, originString));
 			// initialize the connection params
 			const ret = CoapClient.connections[originString] = {
 				origin,
