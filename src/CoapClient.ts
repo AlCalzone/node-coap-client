@@ -1,4 +1,3 @@
-import { EventEmitter } from "events";
 import { dtls } from "node-dtls-client";
 import * as dgram from "dgram";
 import { MessageType, MessageCode, MessageCodes, Message } from "./Message";
@@ -7,7 +6,8 @@ import { ContentFormats } from "./ContentFormats";
 import * as nodeUrl from "url";
 import * as crypto from "crypto";
 import { createDeferredPromise, DeferredPromise } from "./lib/DeferredPromise";
-
+import { SocketWrapper } from "./lib/SocketWrapper";
+import { Origin } from "./lib/Origin";
 
 export type RequestMethod = "get" | "post" | "put" | "delete";
 
@@ -25,24 +25,6 @@ export interface CoapResponse {
     payload?: Buffer
 }
 
-/**
- * Identifies another endpoint (similar to the new WhatWG URL API "origin" property)
- */
-class Origin {
-	constructor(
-		public protocol: string,
-		public hostname: string,
-		public port: number
-	) {}
-
-	public toString(): string {
-		return `${this.protocol}//${this.hostname}:${this.port}`;
-	}
-
-	static fromUrl(url: nodeUrl.Url): Origin {
-		return new Origin(url.protocol, url.hostname, +url.port);
-	}
-}
 
 function urlToString(url: nodeUrl.Url): string {
 	return `${url.protocol}//${url.hostname}:${url.port}${url.pathname}`;
@@ -65,36 +47,7 @@ interface PendingRequest {
 	observe: boolean
 }
 
-class SocketWrapper extends EventEmitter {
 
-	private isDtls: boolean;
-
-	constructor(public socket: dtls.Socket | dgram.Socket) {
-		super();
-		this.isDtls = (socket instanceof dtls.Socket);
-		(socket as any).on("message", (message: Buffer, rinfo: dgram.RemoteInfo) => {
-			console.log(`got a message: ${message.toString("hex")}`);
-			this.emit("message", message, rinfo);
-		});
-	}
-
-
-	send(msg: Buffer, origin: Origin) {
-		if (this.isDtls) {
-			(this.socket as dtls.Socket).send(msg);
-		} else {
-			(this.socket as dgram.Socket).send(msg, origin.port, origin.hostname);
-		}
-	}
-
-    close(): void {
-		if (this.isDtls) {
-			(this.socket as dtls.Socket).close();
-		} else {
-			(this.socket as dgram.Socket).close();
-		}
-    }
-}
 
 export interface SecurityParameters {
 	psk: { [identity: string]: string }
