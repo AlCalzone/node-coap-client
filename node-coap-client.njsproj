@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{89c55675-30fc-4681-8f6a-6fc0a7436759}</ProjectGuid>
     <ProjectHome />
-    <ProjectView>ProjectFiles</ProjectView>
+    <ProjectView>ShowAllFiles</ProjectView>
     <StartupFile>
     </StartupFile>
     <WorkingDirectory>.</WorkingDirectory>
@@ -23,6 +23,7 @@
   <ItemGroup>
     <Content Include=".gitattributes" />
     <Content Include=".gitignore" />
+    <Content Include="LICENSE" />
     <Content Include="package.json" />
     <Content Include="README.md" />
     <Content Include="tsconfig.json" />
@@ -40,6 +41,8 @@
     <TypeScriptCompile Include="src\lib\DeferredPromise.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
+    <TypeScriptCompile Include="src\lib\Origin.ts" />
+    <TypeScriptCompile Include="src\lib\SocketWrapper.ts" />
     <TypeScriptCompile Include="src\Message.test.ts">
       <SubType>Code</SubType>
       <TestFramework>Mocha</TestFramework>
