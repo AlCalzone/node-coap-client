@@ -38,16 +38,18 @@ interface ConnectionInfo {
 }
 
 interface PendingRequest {
-	origin: string,
+	//origin: string, //obsolete: contained in connection
 	connection: ConnectionInfo,
-	token: Buffer,
+	url: string,
+	//token: Buffer,
+	// either (request):
 	promise: Promise<CoapResponse>,
+	// or (observe)
 	callback: (resp: CoapResponse) => void,
 	keepAlive: boolean,
-	observe: boolean
+	observe: boolean,
+	originalMessage: Message // allows resending the message, includes token and message id
 }
-
-
 
 export interface SecurityParameters {
 	psk: { [identity: string]: string }
@@ -92,9 +94,9 @@ export class CoapClient {
 	/** Table of all known security params, sorted by the hostname */
 	private static dtlsParams: { [hostname: string]: SecurityParameters } = {};
 	/** All pending requests, sorted by the token */
-	private static pendingRequests: { [token: string]: PendingRequest } = {};
-	/** All active observations, sorted by the url */
-	private static activeObserveTokens: { [url: string]: string } = {};
+	private static pendingRequestsByToken: { [token: string]: PendingRequest } = {};
+	private static pendingRequestsByMsgID: { [msgId: number]: PendingRequest } = {};
+	private static pendingRequestsByUrl:   { [url: string]: PendingRequest } = {};
 
 	/**
 	 * Sets the security params to be used for the given hostname
@@ -160,20 +162,24 @@ export class CoapClient {
 		// create the promise we're going to return
 		const response = createDeferredPromise<CoapResponse>();
 
+		// create the message we're going to send
+		const message = CoapClient.createMessage(type, code, messageId, token, msgOptions, payload);
+
 		// remember the request
 		const req: PendingRequest = {
 			connection,
-			origin: originString,
-			token,
+			url: urlToString(url), // normalizedUrl
+			originalMessage: message,
 			keepAlive: options.keepAlive,
-			promise: response,
 			callback: null,
-			observe: false
+			observe: false,
+			promise: response
 		}
-		CoapClient.pendingRequests[tokenString] = req;
+		// remember the request
+		CoapClient.rememberRequest(req);
 
 		// now send the message
-		CoapClient.send(connection, type, code, messageId, token, msgOptions, payload);
+		CoapClient.send(connection, message);
 
 		return response;
 		
@@ -237,22 +243,24 @@ export class CoapClient {
 		// create the promise we're going to return
 		const response = createDeferredPromise<CoapResponse>();
 
+		// create the message we're going to send
+		const message = CoapClient.createMessage(type, code, messageId, token, msgOptions, payload);
+
 		// remember the request
 		const req: PendingRequest = {
 			connection,
-			origin: originString,
-			token,
+			url: urlToString(url), // normalizedUrl
+			originalMessage: message,
 			keepAlive: options.keepAlive,
 			callback,
 			observe: true,
 			promise: null
 		}
-		CoapClient.pendingRequests[tokenString] = req;
-		// also remember that we are observing
-		CoapClient.activeObserveTokens[urlToString(url)] = tokenString;
+		// remember the request
+		CoapClient.rememberRequest(req);
 
 		// now send the message
-		CoapClient.send(connection, type, code, messageId, token, msgOptions, payload);
+		CoapClient.send(connection, message);
 
 	}
 
@@ -327,13 +335,12 @@ export class CoapClient {
 
 					// also acknowledge the packet if neccessary
 					if (coapMsg.type === MessageType.CON) {
-						CoapClient.send(
-							request.connection,
+						const ACK = CoapClient.createMessage(
 							MessageType.ACK,
 							MessageCodes.empty,
-							coapMsg.messageId,
-							null, [], null
+							coapMsg.messageId
 						);
+						CoapClient.send(request.connection, ACK);
 					}
 
 
@@ -346,13 +353,12 @@ export class CoapClient {
 						const connection = CoapClient.connections[originString];
 
 						// and send the reset
-						CoapClient.send(
-							connection,
+						const RST = CoapClient.createMessage(
 							MessageType.RST,
 							MessageCodes.empty,
-							coapMsg.messageId,
-							null, [], null
+							coapMsg.messageId
 						);
+						CoapClient.send(connection, RST);
 					}
 				}
 			}
@@ -360,34 +366,95 @@ export class CoapClient {
 		}
 	}
 
-    /**
-     * Send a CoAP message to the given endpoint
-     * @param connection 
+	/**
+	 * Creates a message with the given parameters
      * @param type 
      * @param code 
      * @param messageId 
      * @param token 
      * @param options 
      * @param payload 
-     */
-    private static send(
-        connection: ConnectionInfo,
+	 */
+	private static createMessage(
         type: MessageType,
         code: MessageCode,
         messageId: number,
-        token: Buffer,
-        options: Option[], // do we need this?
-        payload: Buffer
-    ): void {
-
-		// create the message
-		const msg = new Message(
+        token: Buffer = null,
+        options: Option[] = [], // do we need this?
+        payload: Buffer = null
+	): Message {
+		return new Message(
 			0x01,
 			type, code, messageId, token, options, payload
 		);
-		// and send it
-		connection.socket.send(msg.serialize(), connection.origin);
+	}
 
+    /**
+     * Send a CoAP message to the given endpoint
+     * @param connection 
+     */
+    private static send(
+		connection: ConnectionInfo,
+		message: Message
+    ): void {
+
+		// send the message
+		connection.socket.send(message.serialize(), connection.origin);
+
+	}
+
+	/**
+	 * Remembers a request for resending lost messages and tracking responses and updates
+	 * @param request 
+	 * @param byUrl 
+	 * @param byMsgID 
+	 * @param byToken 
+	 */
+	private static rememberRequest(
+		request: PendingRequest, 
+		byUrl: boolean = true, 
+		byMsgID: boolean = true,
+		byToken: boolean = true
+	) {
+		if (byToken) {
+			const tokenString = request.originalMessage.token.toString("hex");
+			CoapClient.pendingRequestsByToken[tokenString] = request;
+		}
+		if (byMsgID) {
+			CoapClient.pendingRequestsByMsgID[request.originalMessage.messageId] = request;
+		}
+		if (byUrl) {
+			CoapClient.pendingRequestsByUrl[request.url] = request;
+		}
+	}
+
+	/**
+	 * Forgets a pending request
+	 * @param request
+	 * @param byUrl 
+	 * @param byMsgID 
+	 * @param byToken 
+	 */
+	private static forgetRequest(
+		request: PendingRequest, 
+		byUrl: boolean = true, 
+		byMsgID: boolean = true,
+		byToken: boolean = true		
+	) {
+		if (byToken) {
+			const tokenString = request.originalMessage.token.toString("hex");
+			if (CoapClient.pendingRequestsByToken.hasOwnProperty(tokenString))
+				delete CoapClient.pendingRequestsByToken[tokenString];
+		}
+		if (byMsgID) {
+			const msgID = request.originalMessage.messageId;
+			if (CoapClient.pendingRequestsByMsgID.hasOwnProperty(msgID))
+				delete CoapClient.pendingRequestsByMsgID[msgID];
+		}
+		if (byUrl) {
+			if (CoapClient.pendingRequestsByUrl.hasOwnProperty(request.url))
+				delete CoapClient.pendingRequestsByUrl[request.url];
+		}
 	}
 
     /**
