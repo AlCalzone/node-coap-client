@@ -29,9 +29,9 @@ export declare class CoapClient {
     /** Table of all known security params, sorted by the hostname */
     private static dtlsParams;
     /** All pending requests, sorted by the token */
-    private static pendingRequests;
-    /** All active observations, sorted by the url */
-    private static activeObserveTokens;
+    private static pendingRequestsByToken;
+    private static pendingRequestsByMsgID;
+    private static pendingRequestsByUrl;
     /**
      * Sets the security params to be used for the given hostname
      */
@@ -44,6 +44,13 @@ export declare class CoapClient {
      * @param options - Various options to control the request.
      */
     static request(url: string | nodeUrl.Url, method: RequestMethod, payload?: Buffer, options?: RequestOptions): Promise<CoapResponse>;
+    /**
+     * Re-Sends a message in case it got lost
+     * @param msgID
+     */
+    private static retransmit(msgID);
+    private static getRetransmissionInterval();
+    private static stopRetransmission(request);
     /**
      * Observes a CoAP resource
      * @param url - The URL to be requested. Must start with coap:// or coaps://
@@ -58,8 +65,7 @@ export declare class CoapClient {
     static stopObserving(url: string | nodeUrl.Url): void;
     private static onMessage(origin, message, rinfo);
     /**
-     * Send a CoAP message to the given endpoint
-     * @param connection
+     * Creates a message with the given parameters
      * @param type
      * @param code
      * @param messageId
@@ -67,7 +73,33 @@ export declare class CoapClient {
      * @param options
      * @param payload
      */
-    private static send(connection, type, code, messageId, token, options, payload);
+    private static createMessage(type, code, messageId, token?, options?, payload?);
+    /**
+     * Send a CoAP message to the given endpoint
+     * @param connection
+     */
+    private static send(connection, message);
+    /**
+     * Remembers a request for resending lost messages and tracking responses and updates
+     * @param request
+     * @param byUrl
+     * @param byMsgID
+     * @param byToken
+     */
+    private static rememberRequest(request, byUrl?, byMsgID?, byToken?);
+    /**
+     * Forgets a pending request
+     * @param request
+     * @param byUrl
+     * @param byMsgID
+     * @param byToken
+     */
+    private static forgetRequest(which);
+    /**
+     * Finds a request we have remembered by one of its properties
+     * @param which
+     */
+    private static findRequest(which);
     /**
      * Establishes a new or retrieves an existing connection to the given origin
      * @param origin - The other party

@@ -47,6 +47,14 @@ The SecurityParameters object looks as follows, for now only PSK key exchanges a
 }
 ```
 
+## Changelog
+
+#### 0.0.2 (2015-07-25)
+* (AlCalzone) implemented retransmission of lost messages.
+
+#### 0.0.1
+* (AlCalzone) initial release. 
+
 
 ## License
 The MIT License (MIT)

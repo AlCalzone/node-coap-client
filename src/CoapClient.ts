@@ -41,6 +41,8 @@ interface PendingRequest {
 	//origin: string, //obsolete: contained in connection
 	connection: ConnectionInfo,
 	url: string,
+	originalMessage: Message, // allows resending the message, includes token and message id
+	retransmit: RetransmissionInfo,
 	//token: Buffer,
 	// either (request):
 	promise: Promise<CoapResponse>,
@@ -48,13 +50,24 @@ interface PendingRequest {
 	callback: (resp: CoapResponse) => void,
 	keepAlive: boolean,
 	observe: boolean,
-	originalMessage: Message // allows resending the message, includes token and message id
 }
 
 export interface SecurityParameters {
 	psk: { [identity: string]: string }
 	// TODO support more
 }
+
+interface RetransmissionInfo {
+	jsTimeout: any,
+	timeout: number,
+	counter: number
+}
+// TODO: make configurable
+const RetransmissionParams = {
+	ackTimeout: 2,
+	ackRandomFactor: 1.5,
+	maxRetransmit: 4
+};
 
 function incrementToken(token: Buffer): Buffer {
 	const len = token.length;
@@ -165,11 +178,23 @@ export class CoapClient {
 		// create the message we're going to send
 		const message = CoapClient.createMessage(type, code, messageId, token, msgOptions, payload);
 
+		// create the retransmission info
+		let retransmit: RetransmissionInfo;
+		if (type === MessageType.CON) {
+			const timeout = CoapClient.getRetransmissionInterval();
+			retransmit = {
+				timeout,
+				jsTimeout: setTimeout(() => CoapClient.retransmit(messageId), timeout),
+				counter: 0
+			}
+		}
+
 		// remember the request
 		const req: PendingRequest = {
 			connection,
 			url: urlToString(url), // normalizedUrl
 			originalMessage: message,
+			retransmit,
 			keepAlive: options.keepAlive,
 			callback: null,
 			observe: false,
@@ -183,6 +208,42 @@ export class CoapClient {
 
 		return response;
 		
+	}
+
+	/**
+	 * Re-Sends a message in case it got lost
+	 * @param msgID
+	 */
+	private static retransmit(msgID: number) {
+		// find the request with all the information
+		const request = CoapClient.findRequest({ msgID });
+		if (request == null || request.retransmit == null) return;
+
+		// are we over the limit?
+		if (request.retransmit.counter > RetransmissionParams.maxRetransmit) {
+			// then stop retransmitting and forget the request
+			CoapClient.forgetRequest({ request });
+			return;
+		}
+
+		console.log(`retransmitting message ${msgID.toString(16)}, try #${request.retransmit.counter + 1}`);
+
+		// resend the message
+		CoapClient.send(request.connection, request.originalMessage);
+		// and increase the params
+		request.retransmit.counter++;
+		request.retransmit.timeout *= 2;
+		request.retransmit.jsTimeout = setTimeout(() => CoapClient.retransmit(msgID), request.retransmit.timeout);
+	}
+	private static getRetransmissionInterval(): number {
+		return Math.round(1000 /*ms*/ * RetransmissionParams.ackTimeout *
+			(1 + Math.random() * (RetransmissionParams.ackRandomFactor - 1))
+		);
+	}
+	private static stopRetransmission(request: PendingRequest) {
+		if (request.retransmit == null) return;
+		clearTimeout(request.retransmit.jsTimeout);
+		request.retransmit = null;
 	}
 
     /**
@@ -246,11 +307,23 @@ export class CoapClient {
 		// create the message we're going to send
 		const message = CoapClient.createMessage(type, code, messageId, token, msgOptions, payload);
 
+		// create the retransmission info
+		let retransmit: RetransmissionInfo;
+		if (type === MessageType.CON) {
+			const timeout = CoapClient.getRetransmissionInterval();
+			retransmit = {
+				timeout,
+				jsTimeout: setTimeout(() => CoapClient.retransmit(messageId), timeout),
+				counter: 0
+			}
+		}
+
 		// remember the request
 		const req: PendingRequest = {
 			connection,
 			url: urlToString(url), // normalizedUrl
 			originalMessage: message,
+			retransmit,
 			keepAlive: options.keepAlive,
 			callback,
 			observe: true,
@@ -276,18 +349,8 @@ export class CoapClient {
 
 		// normalize the url
 		const urlString = urlToString(url);
-		// see if we have the associated token remembered
-		if (CoapClient.activeObserveTokens.hasOwnProperty(urlString)) {
-			const token = CoapClient.activeObserveTokens[urlString];
-			// try to find the matching request
-			if (CoapClient.pendingRequests.hasOwnProperty(token)) {
-				const request = CoapClient.pendingRequests[token];
-				// and remove it from the table
-				delete CoapClient.pendingRequests[token];
-			}
-			// also remove the association from the observer table
-			delete CoapClient.activeObserveTokens[urlString];
-		}
+		// and forget the request if we have one remembered
+		CoapClient.forgetRequest({ url: urlString });
 	}
 
 	private static onMessage(origin: string, message: Buffer, rinfo: dgram.RemoteInfo) {
@@ -296,6 +359,22 @@ export class CoapClient {
 
 		if (coapMsg.code.isEmpty()) {
 			// ACK or RST 
+			// see if we have a request for this message id
+			const request = CoapClient.findRequest({ msgID: coapMsg.messageId });
+			if (request != null) {
+				switch (coapMsg.type) {
+					case MessageType.ACK:
+						console.log(`received ACK for ${coapMsg.messageId.toString(16)}, stopping retransmission...`);
+						// the other party has received the message, stop resending
+						CoapClient.stopRetransmission(request);
+						break;
+					case MessageType.RST:
+						// the other party doesn't know what to do with the request, forget it
+						console.log(`received RST for ${coapMsg.messageId.toString(16)}, forgetting the request...`);
+						CoapClient.forgetRequest({ request });
+						break;
+				}
+			}
 			// TODO handle non-piggybacked messages
 		} else if (coapMsg.code.isRequest()) {
 			// we are a client implementation, we should not get requests
@@ -305,11 +384,17 @@ export class CoapClient {
 			if (coapMsg.token && coapMsg.token.length) {
 				// this message has a token, check which request it belongs to
 				const tokenString = coapMsg.token.toString("hex");
-				if (CoapClient.pendingRequests.hasOwnProperty(tokenString)) {
-					const request = CoapClient.pendingRequests[tokenString];
+				const request = CoapClient.findRequest({ token: tokenString });
+				if (request) {
 
-					let contentFormat: ContentFormats = null;
+					// if the message is an acknowledgement, stop resending
+					if (coapMsg.type === MessageType.ACK) {
+						console.log(`received ACK for ${coapMsg.messageId.toString(16)}, stopping retransmission...`);
+						CoapClient.stopRetransmission(request);
+					}
+
 					// parse options
+					let contentFormat: ContentFormats = null;
 					if (coapMsg.options && coapMsg.options.length) {
 						// see if the response contains information about the content format
 						const optCntFmt = findOption(coapMsg.options, "Content-Format");
@@ -330,7 +415,7 @@ export class CoapClient {
 						// resolve the promise
 						(request.promise as DeferredPromise<CoapResponse>).resolve(response);
 						// after handling one-time requests, delete the info about them
-						delete CoapClient.pendingRequests[tokenString];
+						CoapClient.forgetRequest({ request });
 					}
 
 					// also acknowledge the packet if neccessary
@@ -344,7 +429,7 @@ export class CoapClient {
 					}
 
 
-				} else {
+				} else { // request == null
 					// no request found for this token, send RST so the server stops sending
 
 					// try to find the connection that belongs to this origin
@@ -360,10 +445,10 @@ export class CoapClient {
 						);
 						CoapClient.send(connection, RST);
 					}
-				}
-			}
+				} // request != null?
+			} // (coapMsg.token && coapMsg.token.length) 
 
-		}
+		} // (coapMsg.code.isResponse()) 
 	}
 
 	/**
@@ -436,25 +521,62 @@ export class CoapClient {
 	 * @param byToken 
 	 */
 	private static forgetRequest(
-		request: PendingRequest, 
-		byUrl: boolean = true, 
-		byMsgID: boolean = true,
-		byToken: boolean = true		
-	) {
-		if (byToken) {
-			const tokenString = request.originalMessage.token.toString("hex");
-			if (CoapClient.pendingRequestsByToken.hasOwnProperty(tokenString))
-				delete CoapClient.pendingRequestsByToken[tokenString];
+		which: {
+			request?: PendingRequest,
+			url?: string,
+			msgID?: number,
+			token?: string
+		}) {
+
+		// find the request
+		const request = CoapClient.findRequest(which);
+
+		// none found, return
+		if (request == null) return;
+
+		// stop retransmission if neccessary
+		CoapClient.stopRetransmission(request);
+
+		// delete all references
+		const tokenString = request.originalMessage.token.toString("hex");
+		if (CoapClient.pendingRequestsByToken.hasOwnProperty(tokenString))
+			delete CoapClient.pendingRequestsByToken[tokenString];
+
+		const msgID = request.originalMessage.messageId;
+		if (CoapClient.pendingRequestsByMsgID.hasOwnProperty(msgID))
+			delete CoapClient.pendingRequestsByMsgID[msgID];
+
+		if (CoapClient.pendingRequestsByUrl.hasOwnProperty(request.url))
+			delete CoapClient.pendingRequestsByUrl[request.url];
+	}
+
+	/**
+	 * Finds a request we have remembered by one of its properties
+	 * @param which
+	 */
+	private static findRequest(
+		which: {
+			url?: string,
+			msgID?: number,
+			token?: string
 		}
-		if (byMsgID) {
-			const msgID = request.originalMessage.messageId;
-			if (CoapClient.pendingRequestsByMsgID.hasOwnProperty(msgID))
-				delete CoapClient.pendingRequestsByMsgID[msgID];
+	): PendingRequest {
+
+		if (which.url != null) {
+			if (CoapClient.pendingRequestsByUrl.hasOwnProperty(which.url)) {
+				return CoapClient.pendingRequestsByUrl[which.url];
+			}
+		} else if (which.msgID != null) {
+			if (CoapClient.pendingRequestsByMsgID.hasOwnProperty(which.msgID)) {
+				return CoapClient.pendingRequestsByMsgID[which.msgID];
+			}
+		} else if (which.token != null) {
+			if (CoapClient.pendingRequestsByToken.hasOwnProperty(which.token)) {
+				return CoapClient.pendingRequestsByToken[which.token];
+			}
 		}
-		if (byUrl) {
-			if (CoapClient.pendingRequestsByUrl.hasOwnProperty(request.url))
-				delete CoapClient.pendingRequestsByUrl[request.url];
-		}
+
+		return null;
 	}
 
     /**
