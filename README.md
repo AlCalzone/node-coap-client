@@ -49,6 +49,9 @@ The SecurityParameters object looks as follows, for now only PSK key exchanges a
 
 ## Changelog
 
+#### 0.0.3 (2015-07-XX)
+* (AlCalzone) reliability improvements
+
 #### 0.0.2 (2015-07-25)
 * (AlCalzone) implemented retransmission of lost messages.
 
