@@ -350,6 +350,7 @@ var CoapClient = (function () {
                     }
                     // also acknowledge the packet if neccessary
                     if (coapMsg.type === Message_1.MessageType.CON) {
+                        console.log("sending ACK for " + coapMsg.messageId.toString(16));
                         var ACK = CoapClient.createMessage(Message_1.MessageType.ACK, Message_1.MessageCodes.empty, coapMsg.messageId);
                         CoapClient.send(request.connection, ACK);
                     }
@@ -361,6 +362,7 @@ var CoapClient = (function () {
                     if (CoapClient.connections.hasOwnProperty(originString)) {
                         var connection = CoapClient.connections[originString];
                         // and send the reset
+                        console.log("sending RST for " + coapMsg.messageId.toString(16));
                         var RST = CoapClient.createMessage(Message_1.MessageType.RST, Message_1.MessageCodes.empty, coapMsg.messageId);
                         CoapClient.send(connection, RST);
                     }
@@ -405,6 +407,7 @@ var CoapClient = (function () {
         if (byToken === void 0) { byToken = true; }
         if (byToken) {
             var tokenString = request.originalMessage.token.toString("hex");
+            console.log("remembering request with token " + tokenString);
             CoapClient.pendingRequestsByToken[tokenString] = request;
         }
         if (byMsgID) {
@@ -427,6 +430,7 @@ var CoapClient = (function () {
         // none found, return
         if (request == null)
             return;
+        console.log("forgetting request: token=" + request.originalMessage.token.toString("hex") + "; msgID=" + request.originalMessage.messageId);
         // stop retransmission if neccessary
         CoapClient.stopRetransmission(request);
         // delete all references

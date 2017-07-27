@@ -420,6 +420,7 @@ export class CoapClient {
 
 					// also acknowledge the packet if neccessary
 					if (coapMsg.type === MessageType.CON) {
+						console.log(`sending ACK for ${coapMsg.messageId.toString(16)}`)
 						const ACK = CoapClient.createMessage(
 							MessageType.ACK,
 							MessageCodes.empty,
@@ -438,6 +439,7 @@ export class CoapClient {
 						const connection = CoapClient.connections[originString];
 
 						// and send the reset
+						console.log(`sending RST for ${coapMsg.messageId.toString(16)}`)
 						const RST = CoapClient.createMessage(
 							MessageType.RST,
 							MessageCodes.empty,
@@ -503,6 +505,7 @@ export class CoapClient {
 	) {
 		if (byToken) {
 			const tokenString = request.originalMessage.token.toString("hex");
+			console.log(`remembering request with token ${tokenString}`);
 			CoapClient.pendingRequestsByToken[tokenString] = request;
 		}
 		if (byMsgID) {
@@ -533,6 +536,8 @@ export class CoapClient {
 
 		// none found, return
 		if (request == null) return;
+
+		console.log(`forgetting request: token=${request.originalMessage.token.toString("hex")}; msgID=${request.originalMessage.messageId}`);
 
 		// stop retransmission if neccessary
 		CoapClient.stopRetransmission(request);
