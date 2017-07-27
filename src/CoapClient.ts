@@ -68,6 +68,7 @@ const RetransmissionParams = {
 	ackRandomFactor: 1.5,
 	maxRetransmit: 4
 };
+const TOKEN_LENGTH = 4;
 
 function incrementToken(token: Buffer): Buffer {
 	const len = token.length;
@@ -589,8 +590,20 @@ export class CoapClient {
 			// return existing connection
 			return CoapClient.connections[originString];
 		} else {
-			// create new socket
-			const socket = await CoapClient.getSocket(origin);
+			// Try a few times to setup a working connection
+			const maxTries = 3;
+			let socket: SocketWrapper;
+			for (let i = 1; i <= maxTries; i++) {
+				try {
+					socket = await CoapClient.getSocket(origin);
+					continue; // it worked
+				} catch (e) {
+					// if we are going to try again, ignore the error
+					// else throw it
+					if (i === maxTries) throw e;
+				}
+			}
+			
 			// add the event handler
 			socket.on("message", CoapClient.onMessage.bind(CoapClient, originString));
 			// initialize the connection params
@@ -598,7 +611,7 @@ export class CoapClient {
 				origin,
 				socket, 
 				lastMsgId: 0,
-				lastToken: crypto.randomBytes(4)
+				lastToken: crypto.randomBytes(TOKEN_LENGTH)
 			}
 			// and return it
 			return ret;
