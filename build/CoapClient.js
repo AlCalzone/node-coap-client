@@ -288,6 +288,7 @@ var CoapClient = (function () {
     CoapClient.onMessage = function (origin, message, rinfo) {
         // parse the CoAP message
         var coapMsg = Message_1.Message.parse(message);
+        console.log("received message: ID=" + coapMsg.messageId + ((coapMsg.token && coapMsg.token.length) ? (", token=" + coapMsg.token.toString("hex")) : ""));
         if (coapMsg.code.isEmpty()) {
             // ACK or RST 
             // see if we have a request for this message id

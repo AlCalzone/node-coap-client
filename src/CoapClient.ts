@@ -356,6 +356,7 @@ export class CoapClient {
 	private static onMessage(origin: string, message: Buffer, rinfo: dgram.RemoteInfo) {
 		// parse the CoAP message
 		const coapMsg = Message.parse(message);
+		console.log(`received message: ID=${coapMsg.messageId}${(coapMsg.token && coapMsg.token.length) ? (", token=" + coapMsg.token.toString("hex")) : ""}`);
 
 		if (coapMsg.code.isEmpty()) {
 			// ACK or RST 

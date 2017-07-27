@@ -11,7 +11,6 @@ export class SocketWrapper extends EventEmitter {
 		super();
 		this.isDtls = (socket instanceof dtls.Socket);
 		(socket as any).on("message", (message: Buffer, rinfo: dgram.RemoteInfo) => {
-			console.log(`got a message: ${message.toString("hex")}`);
 			this.emit("message", message, rinfo);
 		});
 	}

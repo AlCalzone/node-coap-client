@@ -19,7 +19,6 @@ var SocketWrapper = (function (_super) {
         _this.socket = socket;
         _this.isDtls = (socket instanceof node_dtls_client_1.dtls.Socket);
         socket.on("message", function (message, rinfo) {
-            console.log("got a message: " + message.toString("hex"));
             _this.emit("message", message, rinfo);
         });
         return _this;
