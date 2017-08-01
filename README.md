@@ -49,7 +49,7 @@ The SecurityParameters object looks as follows, for now only PSK key exchanges a
 
 ## Changelog
 
-#### 0.0.3 (2015-07-XX)
+#### 0.0.3 (2015-08-01)
 * (AlCalzone) reliability improvements
 
 #### 0.0.2 (2015-07-25)
