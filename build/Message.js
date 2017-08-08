@@ -24,22 +24,20 @@ var MessageCode = (function () {
         configurable: true
     });
     MessageCode.prototype.isEmpty = function () { return this.value === exports.MessageCodes.empty.value; };
-    ;
     MessageCode.prototype.isRequest = function () { return (!this.isEmpty()) && (this.major === exports.MessageCodes.request.__major); };
-    ;
     MessageCode.prototype.isResponse = function () {
         return (this.major === exports.MessageCodes.success.__major) ||
             (this.major === exports.MessageCodes.clientError.__major) ||
             (this.major === exports.MessageCodes.serverError.__major);
     };
     MessageCode.prototype.toString = function () { return this.major + "." + (this.minor < 10 ? "0" : "") + this.minor; };
-    ;
     return MessageCode;
 }());
 exports.MessageCode = MessageCode;
 /**
  * all defined message codes
  */
+// tslint:disable-next-line:variable-name
 exports.MessageCodes = Object.freeze({
     empty: new MessageCode(0, 0),
     request: {
@@ -47,7 +45,7 @@ exports.MessageCodes = Object.freeze({
         get: new MessageCode(0, 1),
         post: new MessageCode(0, 2),
         put: new MessageCode(0, 3),
-        delete: new MessageCode(0, 4)
+        delete: new MessageCode(0, 4),
     },
     success: {
         __major: 2,
@@ -109,7 +107,7 @@ var Message = (function () {
         // parse options
         var optionsStart = 4 + tokenLength;
         var options = [];
-        var prevCode = 0; // code of the previously read option 
+        var prevCode = 0; // code of the previously read option
         while (optionsStart < buf.length && buf[optionsStart] !== 0xff) {
             // read option
             var result = Option_1.Option.parse(buf.slice(optionsStart), prevCode);
@@ -118,7 +116,7 @@ var Message = (function () {
             optionsStart += result.readBytes;
         }
         var payload;
-        if (optionsStart < buf.length && buf[optionsStart] == 0xff) {
+        if (optionsStart < buf.length && buf[optionsStart] === 0xff) {
             // here comes the payload
             // copy the remainder of the packet
             payload = Buffer.from(buf.slice(optionsStart + 1));
@@ -183,5 +181,5 @@ exports.Message = Message;
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 1 1 1 1 1 1 1|    Payload (if any) ...
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-*/ 
+*/
 //# sourceMappingURL=Message.js.map

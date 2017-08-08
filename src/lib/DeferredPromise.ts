@@ -4,7 +4,8 @@
 }
 
 export function createDeferredPromise<T>(): DeferredPromise<T> {
-	let res, rej;
+	let res: (value?: T | PromiseLike<T>) => void;
+	let rej: (reason?: any) => void;
 
 	const promise = new Promise<T>((resolve, reject) => {
 		res = resolve;

@@ -112,8 +112,8 @@ var Option = (function () {
         var rawValue = Buffer.from(buf.slice(dataStart, dataStart + length));
         var code = prevCode + delta;
         return {
-            result: OptionConstructors[code](rawValue),
-            readBytes: dataStart + length
+            result: optionConstructors[code](rawValue),
+            readBytes: dataStart + length,
         };
     };
     /**
@@ -194,8 +194,9 @@ var NumericOption = (function (_super) {
                 ret.unshift(value & 0xff);
                 value >>>= 8;
             }
-            if (ret.length > this.maxLength)
+            if (ret.length > this.maxLength) {
                 throw new Error("cannot serialize this value because it is too large");
+            }
             this.rawValue = Buffer.from(ret);
         },
         enumerable: true,
@@ -286,13 +287,15 @@ exports.StringOption = StringOption;
 /**
  * all defined assignments for instancing Options
  */
-var OptionConstructors = {};
-function defineOptionConstructor(constructor, code, name, repeatable) {
+var optionConstructors = {};
+function defineOptionConstructor(
+    // tslint:disable-next-line:ban-types
+    constructor, code, name, repeatable) {
     var args = [];
     for (var _i = 4; _i < arguments.length; _i++) {
         args[_i - 4] = arguments[_i];
     }
-    OptionConstructors[code] = OptionConstructors[name] = (_a = constructor.create).bind.apply(_a, [constructor].concat([code, name, repeatable].concat(args)));
+    optionConstructors[code] = optionConstructors[name] = (_a = constructor.create).bind.apply(_a, [constructor].concat([code, name, repeatable].concat(args)));
     var _a;
 }
 defineOptionConstructor(NumericOption, 6, "Observe", false, 3);
@@ -311,12 +314,14 @@ defineOptionConstructor(StringOption, 15, "Uri-Query", true, 0, 255);
 defineOptionConstructor(StringOption, 20, "Location-Query", true, 0, 255);
 defineOptionConstructor(StringOption, 35, "Proxy-Uri", true, 1, 1034);
 defineOptionConstructor(StringOption, 39, "Proxy-Scheme", true, 1, 255);
+// tslint:disable-next-line:variable-name
 exports.Options = Object.freeze({
-    UriHost: function (hostname) { return OptionConstructors["Uri-Host"](Buffer.from(hostname)); },
-    UriPort: function (port) { return OptionConstructors["Uri-Port"](numberToBuffer(port)); },
-    UriPath: function (pathname) { return OptionConstructors["Uri-Path"](Buffer.from(pathname)); },
-    LocationPath: function (pathname) { return OptionConstructors["Location-Path"](Buffer.from(pathname)); },
-    ContentFormat: function (format) { return OptionConstructors["Content-Format"](numberToBuffer(format)); },
-    Observe: function (observe) { return OptionConstructors["Observe"](Buffer.from([observe ? 0 : 1])); },
+    UriHost: function (hostname) { return optionConstructors["Uri-Host"](Buffer.from(hostname)); },
+    UriPort: function (port) { return optionConstructors["Uri-Port"](numberToBuffer(port)); },
+    UriPath: function (pathname) { return optionConstructors["Uri-Path"](Buffer.from(pathname)); },
+    LocationPath: function (pathname) { return optionConstructors["Location-Path"](Buffer.from(pathname)); },
+    ContentFormat: function (format) { return optionConstructors["Content-Format"](numberToBuffer(format)); },
+    // tslint:disable-next-line:no-string-literal
+    Observe: function (observe) { return optionConstructors["Observe"](Buffer.from([observe ? 0 : 1])); },
 });
 //# sourceMappingURL=Option.js.map

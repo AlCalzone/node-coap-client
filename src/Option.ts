@@ -1,6 +1,6 @@
 import { ContentFormats } from "./ContentFormats";
 
-function numberToBuffer(value: number) : Buffer {
+function numberToBuffer(value: number): Buffer {
 	const ret = [];
 	while (value > 0) {
 		ret.unshift(value & 0xff);
@@ -17,7 +17,7 @@ export abstract class Option {
 	constructor(
 		public readonly code: number,
 		public readonly name: string,
-		public rawValue: Buffer
+		public rawValue: Buffer,
 	) {
 
 	}
@@ -37,7 +37,6 @@ export abstract class Option {
 	public get critical(): boolean {
 		return (this.code & 0b1) === 0b1;
 	}
-
 
 /*
 
@@ -62,7 +61,7 @@ export abstract class Option {
 	 * @param buf - the buffer to read from
 	 * @param prevCode - The option code of the previous option
 	 */
-	static parse(buf: Buffer, prevCode: number = 0): {result: Option, readBytes: number} {
+	public static parse(buf: Buffer, prevCode: number = 0): {result: Option, readBytes: number} {
 		let delta = (buf[0] >>> 4) & 0b1111;
 		let length = buf[0] & 0b1111;
 
@@ -102,8 +101,8 @@ export abstract class Option {
 		const code = prevCode + delta;
 
 		return {
-			result: OptionConstructors[code](rawValue), //new Option(prevCode + delta, rawValue),
-			readBytes: dataStart + length
+			result: optionConstructors[code](rawValue), // new Option(prevCode + delta, rawValue),
+			readBytes: dataStart + length,
 		};
 
 	}
@@ -117,8 +116,8 @@ export abstract class Option {
 		let extraDelta = -1;
 		let length = this.rawValue.length;
 		let extraLength = -1;
-		let totalLength = 
-			1 
+		const totalLength =
+			1
 			+ (delta >= 13 ? 1 : 0)
 			+ (delta >= 269 ? 1 : 0)
 			+ (length >= 13 ? 1 : 0)
@@ -127,14 +126,14 @@ export abstract class Option {
 		;
 		const ret = Buffer.allocUnsafe(totalLength);
 
-		let dataStart = 1;		
+		let dataStart = 1;
 		// check if we need to split the delta in 2 parts
 		if (delta < 13) { /* all good */
 		} else if (delta < 269) {
 			extraDelta = delta - 13;
-			delta = 13;	
+			delta = 13;
 			ret[dataStart] = extraDelta;
-			dataStart += 1
+			dataStart += 1;
 		} else {
 			extraDelta = delta - 14;
 			delta = 14;
@@ -148,12 +147,12 @@ export abstract class Option {
 			extraLength = length - 13;
 			length = 13;
 			ret[dataStart] = extraLength;
-			dataStart += 1			
+			dataStart += 1;
 		} else {
 			extraLength = length - 14;
 			length = 14;
 			ret.writeUInt16BE(extraLength, dataStart);
-			dataStart += 2;			
+			dataStart += 2;
 		}
 
 		// write the delta and length
@@ -173,11 +172,11 @@ export abstract class Option {
 export class NumericOption extends Option {
 
 	constructor(
-		code: number, 
+		code: number,
 		public readonly name: string,
 		public readonly repeatable: boolean,
 		public readonly maxLength: number,
-		rawValue: Buffer
+		rawValue: Buffer,
 	) {
 		super(code, name, rawValue);
 	}
@@ -191,17 +190,18 @@ export class NumericOption extends Option {
 			ret.unshift(value & 0xff);
 			value >>>= 8;
 		}
-		if (ret.length > this.maxLength)
+		if (ret.length > this.maxLength) {
 			throw new Error("cannot serialize this value because it is too large");
+		}
 		this.rawValue = Buffer.from(ret);
 	}
 
-	static create(
-		code: number, 
+	public static create(
+		code: number,
 		name: string,
 		repeatable: boolean,
 		maxLength: number,
-		rawValue: Buffer
+		rawValue: Buffer,
 	): NumericOption {
 		return new NumericOption(code, name, repeatable, maxLength, rawValue);
 	}
@@ -214,12 +214,12 @@ export class NumericOption extends Option {
 export class BinaryOption extends Option {
 
 	constructor(
-		code: number, 
+		code: number,
 		public readonly name: string,
 		public readonly repeatable: boolean,
 		public readonly minLength: number,
 		public readonly maxLength: number,
-		rawValue: Buffer
+		rawValue: Buffer,
 	) {
 		super(code, name, rawValue);
 	}
@@ -238,13 +238,13 @@ export class BinaryOption extends Option {
 		this.rawValue = value;
 	}
 
-	static create(
-		code: number, 
+	public static create(
+		code: number,
 		name: string,
 		repeatable: boolean,
 		minLength: number,
 		maxLength: number,
-		rawValue: Buffer
+		rawValue: Buffer,
 	): BinaryOption {
 		return new BinaryOption(code, name, repeatable, minLength, maxLength, rawValue);
 	}
@@ -257,12 +257,12 @@ export class BinaryOption extends Option {
 export class StringOption extends Option {
 
 	constructor(
-		code: number, 
+		code: number,
 		public readonly name: string,
 		public readonly repeatable: boolean,
 		public readonly minLength: number,
 		public readonly maxLength: number,
-		rawValue: Buffer
+		rawValue: Buffer,
 	) {
 		super(code, name, rawValue);
 	}
@@ -281,13 +281,13 @@ export class StringOption extends Option {
 		this.rawValue = Buffer.from(value, "utf8");
 	}
 
-	static create(
-		code: number, 
+	public static create(
+		code: number,
 		name: string,
 		repeatable: boolean,
 		minLength: number,
 		maxLength: number,
-		rawValue: Buffer
+		rawValue: Buffer,
 	): StringOption {
 		return new StringOption(code, name, repeatable, minLength, maxLength, rawValue);
 	}
@@ -297,13 +297,14 @@ export class StringOption extends Option {
 /**
  * all defined assignments for instancing Options
  */
-const OptionConstructors: {[code: string]: (Buffer) => Option} = {};
+const optionConstructors: {[code: string]: (raw: Buffer) => Option} = {};
 function defineOptionConstructor(
-	constructor: Function, 
+	// tslint:disable-next-line:ban-types
+	constructor: Function,
 	code: number, name: string, repeatable: boolean,
-	...args: any[]
+	...args: any[],
 ): void {
-	OptionConstructors[code] = OptionConstructors[name] = 
+	optionConstructors[code] = optionConstructors[name] =
 		(constructor as any).create.bind(constructor, ...[code, name, repeatable, ...args]);
 }
 defineOptionConstructor(NumericOption, 6, "Observe", false, 3);
@@ -323,15 +324,15 @@ defineOptionConstructor(StringOption, 20, "Location-Query", true, 0, 255);
 defineOptionConstructor(StringOption, 35, "Proxy-Uri", true, 1, 1034);
 defineOptionConstructor(StringOption, 39, "Proxy-Scheme", true, 1, 255);
 
-
-
+// tslint:disable-next-line:variable-name
 export const Options = Object.freeze({
-	UriHost: (hostname: string) => OptionConstructors["Uri-Host"](Buffer.from(hostname)),
-	UriPort: (port: number) => OptionConstructors["Uri-Port"](numberToBuffer(port)),
-	UriPath: (pathname: string) => OptionConstructors["Uri-Path"](Buffer.from(pathname)),
+	UriHost: (hostname: string) => optionConstructors["Uri-Host"](Buffer.from(hostname)),
+	UriPort: (port: number) => optionConstructors["Uri-Port"](numberToBuffer(port)),
+	UriPath: (pathname: string) => optionConstructors["Uri-Path"](Buffer.from(pathname)),
 
-	LocationPath: (pathname: string) => OptionConstructors["Location-Path"](Buffer.from(pathname)),
+	LocationPath: (pathname: string) => optionConstructors["Location-Path"](Buffer.from(pathname)),
 
-	ContentFormat: (format: ContentFormats) => OptionConstructors["Content-Format"](numberToBuffer(format)),
-	Observe: (observe: boolean) => OptionConstructors["Observe"](Buffer.from([observe ? 0 : 1])),
+	ContentFormat: (format: ContentFormats) => optionConstructors["Content-Format"](numberToBuffer(format)),
+	// tslint:disable-next-line:no-string-literal
+	Observe: (observe: boolean) => optionConstructors["Observe"](Buffer.from([observe ? 0 : 1])),
 });

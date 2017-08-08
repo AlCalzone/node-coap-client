@@ -1,7 +1,7 @@
 /// <reference types="node" />
-import { MessageCode } from "./Message";
-import { ContentFormats } from "./ContentFormats";
 import * as nodeUrl from "url";
+import { ContentFormats } from "./ContentFormats";
+import { MessageCode } from "./Message";
 export declare type RequestMethod = "get" | "post" | "put" | "delete";
 /** Options to control CoAP requests */
 export interface RequestOptions {

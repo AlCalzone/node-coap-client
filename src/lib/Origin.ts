@@ -7,14 +7,14 @@ export class Origin {
 	constructor(
 		public protocol: string,
 		public hostname: string,
-		public port: number
+		public port: number,
 	) {}
 
 	public toString(): string {
 		return `${this.protocol}//${this.hostname}:${this.port}`;
 	}
 
-	static fromUrl(url: nodeUrl.Url): Origin {
+	public static fromUrl(url: nodeUrl.Url): Origin {
 		return new Origin(url.protocol, url.hostname, +url.port);
 	}
 }
