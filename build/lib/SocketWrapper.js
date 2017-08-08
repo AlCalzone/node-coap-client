@@ -10,8 +10,8 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-var node_dtls_client_1 = require("node-dtls-client");
 var events_1 = require("events");
+var node_dtls_client_1 = require("node-dtls-client");
 var SocketWrapper = (function (_super) {
     __extends(SocketWrapper, _super);
     function SocketWrapper(socket) {

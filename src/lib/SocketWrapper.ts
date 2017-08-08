@@ -1,6 +1,6 @@
-import { dtls } from "node-dtls-client";
 import * as dgram from "dgram";
 import { EventEmitter } from "events";
+import { dtls } from "node-dtls-client";
 import { Origin } from "./Origin";
 
 export class SocketWrapper extends EventEmitter {
@@ -15,8 +15,7 @@ export class SocketWrapper extends EventEmitter {
 		});
 	}
 
-
-	send(msg: Buffer, origin: Origin) {
+	public send(msg: Buffer, origin: Origin) {
 		if (this.isDtls) {
 			(this.socket as dtls.Socket).send(msg);
 		} else {
@@ -24,11 +23,11 @@ export class SocketWrapper extends EventEmitter {
 		}
 	}
 
-    close(): void {
+	public close(): void {
 		if (this.isDtls) {
 			(this.socket as dtls.Socket).close();
 		} else {
 			(this.socket as dgram.Socket).close();
 		}
-    }
+	}
 }

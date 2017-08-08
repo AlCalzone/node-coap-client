@@ -10,13 +10,13 @@ export enum MessageType {
 export class MessageCode {
 	constructor(
 		public readonly major: number,
-		public readonly minor: number
+		public readonly minor: number,
 	) { }
 
-	static fromValue(value: number) {
+	public static fromValue(value: number) {
 		return new MessageCode(
 			(value >>> 5) & 0b111,
-			value & 0b11111
+			value & 0b11111,
 		);
 	}
 
@@ -24,21 +24,22 @@ export class MessageCode {
 		return ((this.major & 0b111) << 5) + (this.minor & 0b11111);
 	}
 
-	isEmpty() { return this.value === MessageCodes.empty.value };
-	isRequest() { return (!this.isEmpty()) && (this.major === MessageCodes.request.__major) };
-	isResponse() {
+	public isEmpty() { return this.value === MessageCodes.empty.value; }
+	public isRequest() { return (!this.isEmpty()) && (this.major === MessageCodes.request.__major); }
+	public isResponse() {
 		return (this.major === MessageCodes.success.__major) ||
 			(this.major === MessageCodes.clientError.__major) ||
 			(this.major === MessageCodes.serverError.__major)
 			;
 	}
 
-	toString() { return `${this.major}.${this.minor < 10 ? "0" : ""}${this.minor}` };
+	public toString() { return `${this.major}.${this.minor < 10 ? "0" : ""}${this.minor}`; }
 }
 
 /**
  * all defined message codes
  */
+// tslint:disable-next-line:variable-name
 export const MessageCodes = Object.freeze({
 	empty: new MessageCode(0, 0),
 
@@ -47,7 +48,7 @@ export const MessageCodes = Object.freeze({
 		get: new MessageCode(0, 1),
 		post: new MessageCode(0, 2),
 		put: new MessageCode(0, 3),
-		delete: new MessageCode(0, 4)
+		delete: new MessageCode(0, 4),
 	},
 
 	success: {
@@ -97,7 +98,7 @@ export class Message {
 		public messageId: number,
 		public token: Buffer,
 		public options: Option[],
-		public payload: Buffer
+		public payload: Buffer,
 	) {
 
 	}
@@ -106,7 +107,7 @@ export class Message {
 	 * parses a CoAP message from the given buffer
 	 * @param buf - the buffer to read from
 	 */
-	static parse(buf: Buffer): Message {
+	public static parse(buf: Buffer): Message {
 		const version = (buf[0] >>> 6) & 0b11;
 		const type = (buf[0] >>> 4) & 0b11;
 		const tokenLength = buf[0] & 0b1111;
@@ -121,7 +122,7 @@ export class Message {
 		// parse options
 		let optionsStart = 4 + tokenLength;
 		const options = [];
-		let prevCode = 0; // code of the previously read option 
+		let prevCode = 0; // code of the previously read option
 		while (optionsStart < buf.length && buf[optionsStart] !== 0xff) {
 			// read option
 			const result = Option.parse(buf.slice(optionsStart), prevCode);
@@ -132,16 +133,16 @@ export class Message {
 
 		let payload: Buffer;
 
-		if (optionsStart < buf.length && buf[optionsStart] == 0xff) {
+		if (optionsStart < buf.length && buf[optionsStart] === 0xff) {
 			// here comes the payload
 			// copy the remainder of the packet
-			payload = Buffer.from(buf.slice(optionsStart+1));
+			payload = Buffer.from(buf.slice(optionsStart + 1));
 		} else {
 			payload = Buffer.from([]);
 		}
 
 		return new Message(
-			version, type, code, messageId, token, options, payload
+			version, type, code, messageId, token, options, payload,
 		);
 	}
 
@@ -152,10 +153,10 @@ export class Message {
 		const tokenLength = this.token ? this.token.length : 0;
 
 		// serialize the options first, so we know how many bytes to reserve
-		let optionsBuffer : Buffer;
+		let optionsBuffer: Buffer;
 		if (this.options && this.options.length) {
 			optionsBuffer = Buffer.concat(
-				this.options.map((o, i, opts) => o.serialize(i > 0 ? opts[i-1].code : 0))
+				this.options.map((o, i, opts) => o.serialize(i > 0 ? opts[i - 1].code : 0)),
 			);
 		} else {
 			optionsBuffer = Buffer.from([]);

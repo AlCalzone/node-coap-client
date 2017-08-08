@@ -8,8 +8,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t;
-    return { next: verb(0), "throw": verb(1), "return": verb(2) };
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
+    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
     function verb(n) { return function (v) { return step([n, v]); }; }
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
@@ -35,25 +35,26 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-var node_dtls_client_1 = require("node-dtls-client");
+var crypto = require("crypto");
 var dgram = require("dgram");
+var node_dtls_client_1 = require("node-dtls-client");
+var nodeUrl = require("url");
+var ContentFormats_1 = require("./ContentFormats");
+var DeferredPromise_1 = require("./lib/DeferredPromise");
+var Origin_1 = require("./lib/Origin");
+var SocketWrapper_1 = require("./lib/SocketWrapper");
 var Message_1 = require("./Message");
 var Option_1 = require("./Option");
-var ContentFormats_1 = require("./ContentFormats");
-var nodeUrl = require("url");
-var crypto = require("crypto");
-var DeferredPromise_1 = require("./lib/DeferredPromise");
-var SocketWrapper_1 = require("./lib/SocketWrapper");
-var Origin_1 = require("./lib/Origin");
 function urlToString(url) {
     return url.protocol + "//" + url.hostname + ":" + url.port + url.pathname;
 }
 // TODO: make configurable
-var RetransmissionParams = {
+var RETRANSMISSION_PARAMS = {
     ackTimeout: 2,
     ackRandomFactor: 1.5,
-    maxRetransmit: 4
+    maxRetransmit: 4,
 };
+var TOKEN_LENGTH = 4;
 function incrementToken(token) {
     var len = token.length;
     for (var i = len - 1; i >= 0; i--) {
@@ -114,7 +115,8 @@ var CoapClient = (function () {
                         options = options || {};
                         options.confirmable = options.confirmable || true;
                         options.keepAlive = options.keepAlive || true;
-                        origin = Origin_1.Origin.fromUrl(url), originString = origin.toString();
+                        origin = Origin_1.Origin.fromUrl(url);
+                        originString = origin.toString();
                         return [4 /*yield*/, this.getConnection(origin)];
                     case 1:
                         connection = _a.sent();
@@ -143,7 +145,7 @@ var CoapClient = (function () {
                             retransmit = {
                                 timeout: timeout,
                                 jsTimeout: setTimeout(function () { return CoapClient.retransmit(messageId); }, timeout),
-                                counter: 0
+                                counter: 0,
                             };
                         }
                         req = {
@@ -154,7 +156,7 @@ var CoapClient = (function () {
                             keepAlive: options.keepAlive,
                             callback: null,
                             observe: false,
-                            promise: response
+                            promise: response,
                         };
                         // remember the request
                         CoapClient.rememberRequest(req);
@@ -175,7 +177,7 @@ var CoapClient = (function () {
         if (request == null || request.retransmit == null)
             return;
         // are we over the limit?
-        if (request.retransmit.counter > RetransmissionParams.maxRetransmit) {
+        if (request.retransmit.counter > RETRANSMISSION_PARAMS.maxRetransmit) {
             // then stop retransmitting and forget the request
             CoapClient.forgetRequest({ request: request });
             return;
@@ -189,8 +191,8 @@ var CoapClient = (function () {
         request.retransmit.jsTimeout = setTimeout(function () { return CoapClient.retransmit(msgID); }, request.retransmit.timeout);
     };
     CoapClient.getRetransmissionInterval = function () {
-        return Math.round(1000 /*ms*/ * RetransmissionParams.ackTimeout *
-            (1 + Math.random() * (RetransmissionParams.ackRandomFactor - 1)));
+        return Math.round(1000 /*ms*/ * RETRANSMISSION_PARAMS.ackTimeout *
+            (1 + Math.random() * (RETRANSMISSION_PARAMS.ackRandomFactor - 1)));
     };
     CoapClient.stopRetransmission = function (request) {
         if (request.retransmit == null)
@@ -219,7 +221,8 @@ var CoapClient = (function () {
                         options = options || {};
                         options.confirmable = options.confirmable || true;
                         options.keepAlive = options.keepAlive || true;
-                        origin = Origin_1.Origin.fromUrl(url), originString = origin.toString();
+                        origin = Origin_1.Origin.fromUrl(url);
+                        originString = origin.toString();
                         return [4 /*yield*/, this.getConnection(origin)];
                     case 1:
                         connection = _a.sent();
@@ -250,7 +253,7 @@ var CoapClient = (function () {
                             retransmit = {
                                 timeout: timeout,
                                 jsTimeout: setTimeout(function () { return CoapClient.retransmit(messageId); }, timeout),
-                                counter: 0
+                                counter: 0,
                             };
                         }
                         req = {
@@ -261,7 +264,7 @@ var CoapClient = (function () {
                             keepAlive: options.keepAlive,
                             callback: callback,
                             observe: true,
-                            promise: null
+                            promise: null,
                         };
                         // remember the request
                         CoapClient.rememberRequest(req);
@@ -290,7 +293,7 @@ var CoapClient = (function () {
         var coapMsg = Message_1.Message.parse(message);
         console.log("received message: ID=" + coapMsg.messageId + ((coapMsg.token && coapMsg.token.length) ? (", token=" + coapMsg.token.toString("hex")) : ""));
         if (coapMsg.code.isEmpty()) {
-            // ACK or RST 
+            // ACK or RST
             // see if we have a request for this message id
             var request = CoapClient.findRequest({ msgID: coapMsg.messageId });
             if (request != null) {
@@ -337,7 +340,7 @@ var CoapClient = (function () {
                     var response = {
                         code: coapMsg.code,
                         format: contentFormat,
-                        payload: coapMsg.payload
+                        payload: coapMsg.payload,
                     };
                     if (request.observe) {
                         // call the callback
@@ -368,8 +371,8 @@ var CoapClient = (function () {
                         CoapClient.send(connection, RST);
                     }
                 } // request != null?
-            } // (coapMsg.token && coapMsg.token.length) 
-        } // (coapMsg.code.isResponse()) 
+            } // (coapMsg.token && coapMsg.token.length)
+        } // (coapMsg.code.isResponse())
     };
     /**
      * Creates a message with the given parameters
@@ -436,13 +439,16 @@ var CoapClient = (function () {
         CoapClient.stopRetransmission(request);
         // delete all references
         var tokenString = request.originalMessage.token.toString("hex");
-        if (CoapClient.pendingRequestsByToken.hasOwnProperty(tokenString))
+        if (CoapClient.pendingRequestsByToken.hasOwnProperty(tokenString)) {
             delete CoapClient.pendingRequestsByToken[tokenString];
+        }
         var msgID = request.originalMessage.messageId;
-        if (CoapClient.pendingRequestsByMsgID.hasOwnProperty(msgID))
+        if (CoapClient.pendingRequestsByMsgID.hasOwnProperty(msgID)) {
             delete CoapClient.pendingRequestsByMsgID[msgID];
-        if (CoapClient.pendingRequestsByUrl.hasOwnProperty(request.url))
+        }
+        if (CoapClient.pendingRequestsByUrl.hasOwnProperty(request.url)) {
             delete CoapClient.pendingRequestsByUrl[request.url];
+        }
     };
     /**
      * Finds a request we have remembered by one of its properties
@@ -472,7 +478,7 @@ var CoapClient = (function () {
      */
     CoapClient.getConnection = function (origin) {
         return __awaiter(this, void 0, void 0, function () {
-            var originString, socket, ret;
+            var originString, maxTries, socket, i, e_1, ret;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -480,16 +486,38 @@ var CoapClient = (function () {
                         if (!CoapClient.connections.hasOwnProperty(originString)) return [3 /*break*/, 1];
                         // return existing connection
                         return [2 /*return*/, CoapClient.connections[originString]];
-                    case 1: return [4 /*yield*/, CoapClient.getSocket(origin)];
+                    case 1:
+                        maxTries = 3;
+                        socket = void 0;
+                        i = 1;
+                        _a.label = 2;
                     case 2:
+                        if (!(i <= maxTries)) return [3 /*break*/, 7];
+                        _a.label = 3;
+                    case 3:
+                        _a.trys.push([3, 5, , 6]);
+                        return [4 /*yield*/, CoapClient.getSocket(origin)];
+                    case 4:
                         socket = _a.sent();
+                        return [3 /*break*/, 6]; // it worked
+                    case 5:
+                        e_1 = _a.sent();
+                        // if we are going to try again, ignore the error
+                        // else throw it
+                        if (i === maxTries)
+                            throw e_1;
+                        return [3 /*break*/, 6];
+                    case 6:
+                        i++;
+                        return [3 /*break*/, 2];
+                    case 7:
                         // add the event handler
                         socket.on("message", CoapClient.onMessage.bind(CoapClient, originString));
                         ret = CoapClient.connections[originString] = {
                             origin: origin,
                             socket: socket,
                             lastMsgId: 0,
-                            lastToken: crypto.randomBytes(4)
+                            lastToken: crypto.randomBytes(TOKEN_LENGTH),
                         };
                         // and return it
                         return [2 /*return*/, ret];
@@ -510,8 +538,9 @@ var CoapClient = (function () {
                 // return a promise we resolve as soon as the connection is secured
                 var ret_1 = DeferredPromise_1.createDeferredPromise();
                 // try to find security parameters
-                if (!CoapClient.dtlsParams.hasOwnProperty(origin.hostname))
+                if (!CoapClient.dtlsParams.hasOwnProperty(origin.hostname)) {
                     return Promise.reject("No security parameters given for the resource at " + origin.toString());
+                }
                 var dtlsOpts = Object.assign({
                     type: "udp4",
                     address: origin.hostname,
@@ -527,15 +556,15 @@ var CoapClient = (function () {
                 throw new Error("protocol type \"" + origin.protocol + "\" is not supported");
         }
     };
+    /** Table of all open connections and their parameters, sorted by the origin "coap(s)://host:port" */
+    CoapClient.connections = {};
+    /** Table of all known security params, sorted by the hostname */
+    CoapClient.dtlsParams = {};
+    /** All pending requests, sorted by the token */
+    CoapClient.pendingRequestsByToken = {};
+    CoapClient.pendingRequestsByMsgID = {};
+    CoapClient.pendingRequestsByUrl = {};
     return CoapClient;
 }());
-/** Table of all open connections and their parameters, sorted by the origin "coap(s)://host:port" */
-CoapClient.connections = {};
-/** Table of all known security params, sorted by the hostname */
-CoapClient.dtlsParams = {};
-/** All pending requests, sorted by the token */
-CoapClient.pendingRequestsByToken = {};
-CoapClient.pendingRequestsByMsgID = {};
-CoapClient.pendingRequestsByUrl = {};
 exports.CoapClient = CoapClient;
 //# sourceMappingURL=CoapClient.js.map

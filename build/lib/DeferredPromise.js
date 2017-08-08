@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 function createDeferredPromise() {
-    var res, rej;
+    var res;
+    var rej;
     var promise = new Promise(function (resolve, reject) {
         res = resolve;
         rej = reject;
