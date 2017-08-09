@@ -10,9 +10,17 @@ export class SocketWrapper extends EventEmitter {
 	constructor(public socket: dtls.Socket | dgram.Socket) {
 		super();
 		this.isDtls = (socket instanceof dtls.Socket);
-		(socket as any).on("message", (message: Buffer, rinfo: dgram.RemoteInfo) => {
-			this.emit("message", message, rinfo);
-		});
+		(socket as any)
+			.on("message", (message: Buffer, rinfo: dgram.RemoteInfo) => {
+				this.emit("message", message, rinfo);
+			})
+			.on("error", (err: Error) => {
+				this.emit("error", err);
+			})
+			.on("close", () => {
+				this.emit("close");
+			})
+			;
 	}
 
 	public send(msg: Buffer, origin: Origin) {
