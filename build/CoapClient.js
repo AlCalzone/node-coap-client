@@ -1,4 +1,14 @@
 "use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -37,6 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var crypto = require("crypto");
 var dgram = require("dgram");
+var events_1 = require("events");
 var node_dtls_client_1 = require("node-dtls-client");
 var nodeUrl = require("url");
 var ContentFormats_1 = require("./ContentFormats");
@@ -48,6 +59,38 @@ var Option_1 = require("./Option");
 function urlToString(url) {
     return url.protocol + "//" + url.hostname + ":" + url.port + url.pathname;
 }
+var PendingRequest = (function (_super) {
+    __extends(PendingRequest, _super);
+    function PendingRequest(initial) {
+        var _this = _super.call(this) || this;
+        if (!initial)
+            return _this;
+        _this.connection = initial.connection;
+        _this.url = initial.url;
+        _this.originalMessage = initial.originalMessage;
+        _this.retransmit = initial.retransmit;
+        _this.promise = initial.promise;
+        _this.callback = initial.callback;
+        _this.keepAlive = initial.keepAlive;
+        _this.observe = initial.observe;
+        _this._concurrency = initial.concurrency;
+        return _this;
+    }
+    Object.defineProperty(PendingRequest.prototype, "concurrency", {
+        get: function () {
+            return this._concurrency;
+        },
+        set: function (value) {
+            var changed = value !== this._concurrency;
+            this._concurrency = value;
+            if (changed)
+                this.emit("concurrencyChanged", this);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    return PendingRequest;
+}(events_1.EventEmitter));
 // TODO: make configurable
 var RETRANSMISSION_PARAMS = {
     ackTimeout: 2,
@@ -55,6 +98,8 @@ var RETRANSMISSION_PARAMS = {
     maxRetransmit: 4,
 };
 var TOKEN_LENGTH = 4;
+/** How many concurrent messages are allowed. Should be 1 */
+var MAX_CONCURRENCY = 1;
 function incrementToken(token) {
     var len = token.length;
     for (var i = len - 1; i >= 0; i--) {
@@ -148,7 +193,7 @@ var CoapClient = (function () {
                                 counter: 0,
                             };
                         }
-                        req = {
+                        req = new PendingRequest({
                             connection: connection,
                             url: urlToString(url),
                             originalMessage: message,
@@ -157,7 +202,8 @@ var CoapClient = (function () {
                             callback: null,
                             observe: false,
                             promise: response,
-                        };
+                            concurrency: 1,
+                        });
                         // remember the request
                         CoapClient.rememberRequest(req);
                         // now send the message
@@ -256,7 +302,7 @@ var CoapClient = (function () {
                                 counter: 0,
                             };
                         }
-                        req = {
+                        req = new PendingRequest({
                             connection: connection,
                             url: urlToString(url),
                             originalMessage: message,
@@ -265,7 +311,8 @@ var CoapClient = (function () {
                             callback: callback,
                             observe: true,
                             promise: null,
-                        };
+                            concurrency: 1,
+                        });
                         // remember the request
                         CoapClient.rememberRequest(req);
                         // now send the message
@@ -297,6 +344,9 @@ var CoapClient = (function () {
             // see if we have a request for this message id
             var request = CoapClient.findRequest({ msgID: coapMsg.messageId });
             if (request != null) {
+                // reduce the request's concurrency, since it was handled on the server
+                request.concurrency = 0;
+                // handle the message
                 switch (coapMsg.type) {
                     case Message_1.MessageType.ACK:
                         console.log("received ACK for " + coapMsg.messageId.toString(16) + ", stopping retransmission...");
@@ -310,7 +360,6 @@ var CoapClient = (function () {
                         break;
                 }
             }
-            // TODO handle non-piggybacked messages
         }
         else if (coapMsg.code.isRequest()) {
             // we are a client implementation, we should not get requests
@@ -356,8 +405,10 @@ var CoapClient = (function () {
                     if (coapMsg.type === Message_1.MessageType.CON) {
                         console.log("sending ACK for " + coapMsg.messageId.toString(16));
                         var ACK = CoapClient.createMessage(Message_1.MessageType.ACK, Message_1.MessageCodes.empty, coapMsg.messageId);
-                        CoapClient.send(request.connection, ACK);
+                        CoapClient.send(request.connection, ACK, true);
                     }
+                    // in any case, reduce the request's concurrency, since it was handled
+                    request.concurrency = 0;
                 }
                 else {
                     // no request found for this token, send RST so the server stops sending
@@ -368,7 +419,7 @@ var CoapClient = (function () {
                         // and send the reset
                         console.log("sending RST for " + coapMsg.messageId.toString(16));
                         var RST = CoapClient.createMessage(Message_1.MessageType.RST, Message_1.MessageCodes.empty, coapMsg.messageId);
-                        CoapClient.send(connection, RST);
+                        CoapClient.send(connection, RST, true);
                     }
                 } // request != null?
             } // (coapMsg.token && coapMsg.token.length)
@@ -394,9 +445,47 @@ var CoapClient = (function () {
      * Send a CoAP message to the given endpoint
      * @param connection
      */
-    CoapClient.send = function (connection, message) {
-        // send the message
-        connection.socket.send(message.serialize(), connection.origin);
+    CoapClient.send = function (connection, message, highPriority) {
+        if (highPriority === void 0) { highPriority = false; }
+        // Put the message in the queue
+        if (highPriority) {
+            // in front
+            CoapClient.sendQueue.unshift({ connection: connection, message: message });
+        }
+        else {
+            // at the end
+            CoapClient.sendQueue.push({ connection: connection, message: message });
+        }
+        // if there's a request for this message, listen for concurrency changes
+        var request = CoapClient.findRequest({ msgID: message.messageId });
+        if (request != null) {
+            // and continue working off the queue when it does
+            request.once("concurrencyChanged", function (req) { return CoapClient.workOffSendQueue(); });
+        }
+        // start working it off now (maybe)
+        CoapClient.workOffSendQueue();
+    };
+    CoapClient.workOffSendQueue = function () {
+        // check if there are messages to send
+        if (CoapClient.sendQueue.length === 0)
+            return;
+        // check if we may send a message now
+        if (CoapClient.calculateConcurrency() < MAX_CONCURRENCY) {
+            // get the next message to send
+            var _a = CoapClient.sendQueue.shift(), connection = _a.connection, message = _a.message;
+            // send the message
+            connection.socket.send(message.serialize(), connection.origin);
+        }
+        // to avoid any deadlocks we didn't think of, re-call this later
+        setTimeout(CoapClient.workOffSendQueue, 100);
+    };
+    /** Calculates the current concurrency, i.e. how many parallel requests are being handled */
+    CoapClient.calculateConcurrency = function () {
+        return Object.keys(CoapClient.pendingRequestsByMsgID) // find all requests
+            .map(function (msgid) { return CoapClient.pendingRequestsByMsgID[msgid]; })
+            .map(function (req) { return req.concurrency; }) // extract their concurrency
+            .reduce(function (sum, item) { return sum + item; }) // and sum it up
+        ;
     };
     /**
      * Remembers a request for resending lost messages and tracking responses and updates
@@ -449,6 +538,10 @@ var CoapClient = (function () {
         if (CoapClient.pendingRequestsByUrl.hasOwnProperty(request.url)) {
             delete CoapClient.pendingRequestsByUrl[request.url];
         }
+        // Set concurrency to 0, so the send queue can continue
+        request.concurrency = 0;
+        // Clean up the event listeners
+        request.removeAllListeners();
     };
     /**
      * Finds a request we have remembered by one of its properties
@@ -566,5 +659,10 @@ CoapClient.dtlsParams = {};
 CoapClient.pendingRequestsByToken = {};
 CoapClient.pendingRequestsByMsgID = {};
 CoapClient.pendingRequestsByUrl = {};
+/** Array of the messages waiting to be sent */
+CoapClient.sendQueue = [];
+CoapClient.isSending = false;
+/** Number of message we expect an answer for */
+CoapClient.concurrency = 0;
 exports.CoapClient = CoapClient;
 //# sourceMappingURL=CoapClient.js.map
