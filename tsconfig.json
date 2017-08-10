@@ -8,7 +8,7 @@
         "noImplicitAny": false,
         "outDir": "build/",
         "removeComments": false,
-        "sourceMap": true,
+        "inlineSourceMap": true,
         "sourceRoot": "src/",
         "target": "es5",
         "lib": ["es6"]

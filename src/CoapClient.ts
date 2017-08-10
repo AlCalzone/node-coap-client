@@ -702,7 +702,7 @@ export class CoapClient {
 			for (let i = 1; i <= maxTries; i++) {
 				try {
 					socket = await CoapClient.getSocket(origin);
-					continue; // it worked
+					break; // it worked
 				} catch (e) {
 					// if we are going to try again, ignore the error
 					// else throw it
@@ -728,7 +728,7 @@ export class CoapClient {
 	 * Establishes or retrieves a socket that can be used to send to and receive data from the given origin
 	 * @param origin - The other party
 	 */
-	private static getSocket(origin: Origin): Promise<SocketWrapper> {
+	private static async getSocket(origin: Origin): Promise<SocketWrapper> {
 
 		switch (origin.protocol) {
 			case "coap:":
@@ -750,10 +750,20 @@ export class CoapClient {
 					CoapClient.dtlsParams[origin.hostname],
 				);
 				// try connecting
+				const onConnection = () => {
+					console.log("successfully created socket for origin " + origin.toString());
+					sock.removeListener("error", onError);
+					ret.resolve(new SocketWrapper(sock));
+				};
+				const onError = (e: Error) => {
+					console.log("socket creation for origin " + origin.toString() + " failed: " + e);
+					sock.removeListener("connected", onConnection);
+					ret.reject(e.message);
+				};
 				const sock = dtls
 					.createSocket(dtlsOpts)
-					.on("connected", () => ret.resolve(new SocketWrapper(sock)))
-					.on("error", (e: Error) => ret.reject(e.message))
+					.once("connected", onConnection)
+					.once("error", onError)
 					;
 				return ret;
 			default:
