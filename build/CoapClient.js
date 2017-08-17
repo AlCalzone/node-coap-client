@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var crypto = require("crypto");
+var debugPackage = require("debug");
 var dgram = require("dgram");
 var node_dtls_client_1 = require("node-dtls-client");
 var nodeUrl = require("url");
@@ -45,6 +46,7 @@ var Origin_1 = require("./lib/Origin");
 var SocketWrapper_1 = require("./lib/SocketWrapper");
 var Message_1 = require("./Message");
 var Option_1 = require("./Option");
+var debug = debugPackage("node-coap-client");
 function urlToString(url) {
     return url.protocol + "//" + url.hostname + ":" + url.port + url.pathname;
 }
@@ -182,7 +184,7 @@ var CoapClient = (function () {
             CoapClient.forgetRequest({ request: request });
             return;
         }
-        console.log("retransmitting message " + msgID.toString(16) + ", try #" + (request.retransmit.counter + 1));
+        debug("retransmitting message " + msgID.toString(16) + ", try #" + (request.retransmit.counter + 1));
         // resend the message
         CoapClient.send(request.connection, request.originalMessage);
         // and increase the params
@@ -291,7 +293,7 @@ var CoapClient = (function () {
     CoapClient.onMessage = function (origin, message, rinfo) {
         // parse the CoAP message
         var coapMsg = Message_1.Message.parse(message);
-        console.log("received message: ID=" + coapMsg.messageId + ((coapMsg.token && coapMsg.token.length) ? (", token=" + coapMsg.token.toString("hex")) : ""));
+        debug("received message: ID=" + coapMsg.messageId + ((coapMsg.token && coapMsg.token.length) ? (", token=" + coapMsg.token.toString("hex")) : ""));
         if (coapMsg.code.isEmpty()) {
             // ACK or RST
             // see if we have a request for this message id
@@ -299,13 +301,13 @@ var CoapClient = (function () {
             if (request != null) {
                 switch (coapMsg.type) {
                     case Message_1.MessageType.ACK:
-                        console.log("received ACK for " + coapMsg.messageId.toString(16) + ", stopping retransmission...");
+                        debug("received ACK for " + coapMsg.messageId.toString(16) + ", stopping retransmission...");
                         // the other party has received the message, stop resending
                         CoapClient.stopRetransmission(request);
                         break;
                     case Message_1.MessageType.RST:
                         // the other party doesn't know what to do with the request, forget it
-                        console.log("received RST for " + coapMsg.messageId.toString(16) + ", forgetting the request...");
+                        debug("received RST for " + coapMsg.messageId.toString(16) + ", forgetting the request...");
                         CoapClient.forgetRequest({ request: request });
                         break;
                 }
@@ -325,7 +327,7 @@ var CoapClient = (function () {
                 if (request) {
                     // if the message is an acknowledgement, stop resending
                     if (coapMsg.type === Message_1.MessageType.ACK) {
-                        console.log("received ACK for " + coapMsg.messageId.toString(16) + ", stopping retransmission...");
+                        debug("received ACK for " + coapMsg.messageId.toString(16) + ", stopping retransmission...");
                         CoapClient.stopRetransmission(request);
                     }
                     // parse options
@@ -354,7 +356,7 @@ var CoapClient = (function () {
                     }
                     // also acknowledge the packet if neccessary
                     if (coapMsg.type === Message_1.MessageType.CON) {
-                        console.log("sending ACK for " + coapMsg.messageId.toString(16));
+                        debug("sending ACK for " + coapMsg.messageId.toString(16));
                         var ACK = CoapClient.createMessage(Message_1.MessageType.ACK, Message_1.MessageCodes.empty, coapMsg.messageId);
                         CoapClient.send(request.connection, ACK);
                     }
@@ -366,7 +368,7 @@ var CoapClient = (function () {
                     if (CoapClient.connections.hasOwnProperty(originString)) {
                         var connection = CoapClient.connections[originString];
                         // and send the reset
-                        console.log("sending RST for " + coapMsg.messageId.toString(16));
+                        debug("sending RST for " + coapMsg.messageId.toString(16));
                         var RST = CoapClient.createMessage(Message_1.MessageType.RST, Message_1.MessageCodes.empty, coapMsg.messageId);
                         CoapClient.send(connection, RST);
                     }
@@ -411,7 +413,7 @@ var CoapClient = (function () {
         if (byToken === void 0) { byToken = true; }
         if (byToken) {
             var tokenString = request.originalMessage.token.toString("hex");
-            console.log("remembering request with token " + tokenString);
+            debug("remembering request with token " + tokenString);
             CoapClient.pendingRequestsByToken[tokenString] = request;
         }
         if (byMsgID) {
@@ -434,7 +436,7 @@ var CoapClient = (function () {
         // none found, return
         if (request == null)
             return;
-        console.log("forgetting request: token=" + request.originalMessage.token.toString("hex") + "; msgID=" + request.originalMessage.messageId);
+        debug("forgetting request: token=" + request.originalMessage.token.toString("hex") + "; msgID=" + request.originalMessage.messageId);
         // stop retransmission if neccessary
         CoapClient.stopRetransmission(request);
         // delete all references
@@ -549,12 +551,12 @@ var CoapClient = (function () {
                             port: origin.port,
                         }, CoapClient.dtlsParams[origin.hostname]);
                         onConnection_1 = function () {
-                            console.log("successfully created socket for origin " + origin.toString());
+                            debug("successfully created socket for origin " + origin.toString());
                             sock_1.removeListener("error", onError_1);
                             ret_1.resolve(new SocketWrapper_1.SocketWrapper(sock_1));
                         };
                         onError_1 = function (e) {
-                            console.log("socket creation for origin " + origin.toString() + " failed: " + e);
+                            debug("socket creation for origin " + origin.toString() + " failed: " + e);
                             sock_1.removeListener("connected", onConnection_1);
                             ret_1.reject(e.message);
                         };
