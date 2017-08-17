@@ -27,6 +27,7 @@
     "url": "git+https://github.com/AlCalzone/node-coap-client.git"
   },
   "dependencies": {
+    "debug": "^3.0.0",
     "node-dtls-client": "^0.1.0"
   },
   "scripts": {
