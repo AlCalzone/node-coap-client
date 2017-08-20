@@ -37,6 +37,11 @@ export declare class CoapClient {
      */
     static setSecurityParams(hostname: string, params: SecurityParameters): void;
     /**
+     * Closes and forgets about connections, useful if DTLS session is reset on remote end
+     * @param hostname - Hostname to reset, omit to reset all connections
+     */
+    static reset(hostname?: string): void;
+    /**
      * Requests a CoAP resource
      * @param url - The URL to be requested. Must start with coap:// or coaps://
      * @param method - The request method to be used
