@@ -178,6 +178,10 @@ var CoapClient = (function () {
             return;
         // are we over the limit?
         if (request.retransmit.counter > RETRANSMISSION_PARAMS.maxRetransmit) {
+            // check for and reject promise
+            if (request.promise !== null) {
+                request.promise.reject(new Error("Retransmit counter exceeded"));
+            }
             // then stop retransmitting and forget the request
             CoapClient.forgetRequest({ request: request });
             return;
