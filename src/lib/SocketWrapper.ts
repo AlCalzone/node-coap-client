@@ -6,6 +6,7 @@ import { Origin } from "./Origin";
 export class SocketWrapper extends EventEmitter {
 
 	private isDtls: boolean;
+	private isClosed: boolean;
 
 	constructor(public socket: dtls.Socket | dgram.Socket) {
 		super();
@@ -24,6 +25,7 @@ export class SocketWrapper extends EventEmitter {
 	}
 
 	public send(msg: Buffer, origin: Origin) {
+		if (this.isClosed) return;
 		if (this.isDtls) {
 			(this.socket as dtls.Socket).send(msg);
 		} else {
@@ -32,6 +34,8 @@ export class SocketWrapper extends EventEmitter {
 	}
 
 	public close(): void {
+		if (this.isClosed) return;
+		this.isClosed = true;
 		if (this.isDtls) {
 			(this.socket as dtls.Socket).close();
 		} else {
