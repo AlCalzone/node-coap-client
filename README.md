@@ -49,6 +49,9 @@ The SecurityParameters object looks as follows, for now only PSK key exchanges a
 
 ## Changelog
 
+#### 0.1.0 (2015-08-23)
+* (AlCalzone) release on npm
+
 #### 0.0.4 (2015-08-09)
 * (AlCalzone) bugfixes
 
