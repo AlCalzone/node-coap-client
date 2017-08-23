@@ -1,0 +1,9 @@
+.git*
+*.njsproj
+*.sln
+tsconfig.json
+tslint.json
+tests/
+src/
+build/**/*.map
+node-coap-client-*.tgz
