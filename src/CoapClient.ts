@@ -121,6 +121,37 @@ export class CoapClient {
 	}
 
 	/**
+	 * Closes and forgets about connections, useful if DTLS session is reset on remote end
+	 * @param originOrHostname - Origin (protocol://hostname:port) or Hostname to reset,
+	 * omit to reset all connections
+	 */
+	public static reset(originOrHostname?: string | Origin) {
+		let predicate: (originString: string) => boolean;
+		if (originOrHostname != null) {
+			if (typeof originOrHostname === "string") {
+				// we were given a hostname, forget the connection if the origin's hostname matches
+				predicate = (originString: string) => Origin.parse(originString).hostname === originOrHostname;
+			} else {
+				// we were given an origin, forget the connection if its string representation matches
+				const match = originOrHostname.toString();
+				predicate = (originString: string) => originString === match;
+			}
+		} else {
+			// we weren't given a filter, forget all connections
+			predicate = (originString: string) => true;
+		}
+
+		for (const originString in CoapClient.connections) {
+			if (!predicate(originString)) continue;
+
+			if (CoapClient.connections[originString].socket) {
+				CoapClient.connections[originString].socket.close();
+			}
+			delete CoapClient.connections[originString];
+		}
+	}
+
+	/**
 	 * Requests a CoAP resource
 	 * @param url - The URL to be requested. Must start with coap:// or coaps://
 	 * @param method - The request method to be used
