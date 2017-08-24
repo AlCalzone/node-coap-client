@@ -9,6 +9,8 @@ import { Origin } from "./lib/Origin";
 import { SocketWrapper } from "./lib/SocketWrapper";
 import { Message, MessageCode, MessageCodes, MessageType } from "./Message";
 import { BinaryOption, NumericOption, Option, Options, StringOption } from "./Option";
+
+// initialize debugging
 const debug = debugPackage("node-coap-client");
 
 export type RequestMethod = "get" | "post" | "put" | "delete";
