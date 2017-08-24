@@ -1,4 +1,5 @@
 import * as crypto from "crypto";
+import * as debugPackage from "debug";
 import * as dgram from "dgram";
 import { dtls } from "node-dtls-client";
 import * as nodeUrl from "url";
@@ -8,6 +9,9 @@ import { Origin } from "./lib/Origin";
 import { SocketWrapper } from "./lib/SocketWrapper";
 import { Message, MessageCode, MessageCodes, MessageType } from "./Message";
 import { BinaryOption, NumericOption, Option, Options, StringOption } from "./Option";
+
+// initialize debugging
+const debug = debugPackage("node-coap-client");
 
 export type RequestMethod = "get" | "post" | "put" | "delete";
 
@@ -222,7 +226,7 @@ export class CoapClient {
 			return;
 		}
 
-		console.log(`retransmitting message ${msgID.toString(16)}, try #${request.retransmit.counter + 1}`);
+		debug(`retransmitting message ${msgID.toString(16)}, try #${request.retransmit.counter + 1}`);
 
 		// resend the message
 		CoapClient.send(request.connection, request.originalMessage);
@@ -350,7 +354,7 @@ export class CoapClient {
 	private static onMessage(origin: string, message: Buffer, rinfo: dgram.RemoteInfo) {
 		// parse the CoAP message
 		const coapMsg = Message.parse(message);
-		console.log(`received message: ID=${coapMsg.messageId}${(coapMsg.token && coapMsg.token.length) ? (", token=" + coapMsg.token.toString("hex")) : ""}`);
+		debug(`received message: ID=${coapMsg.messageId}${(coapMsg.token && coapMsg.token.length) ? (", token=" + coapMsg.token.toString("hex")) : ""}`);
 
 		if (coapMsg.code.isEmpty()) {
 			// ACK or RST
@@ -359,13 +363,13 @@ export class CoapClient {
 			if (request != null) {
 				switch (coapMsg.type) {
 					case MessageType.ACK:
-						console.log(`received ACK for ${coapMsg.messageId.toString(16)}, stopping retransmission...`);
+						debug(`received ACK for ${coapMsg.messageId.toString(16)}, stopping retransmission...`);
 						// the other party has received the message, stop resending
 						CoapClient.stopRetransmission(request);
 						break;
 					case MessageType.RST:
 						// the other party doesn't know what to do with the request, forget it
-						console.log(`received RST for ${coapMsg.messageId.toString(16)}, forgetting the request...`);
+						debug(`received RST for ${coapMsg.messageId.toString(16)}, forgetting the request...`);
 						CoapClient.forgetRequest({ request });
 						break;
 				}
@@ -384,7 +388,7 @@ export class CoapClient {
 
 					// if the message is an acknowledgement, stop resending
 					if (coapMsg.type === MessageType.ACK) {
-						console.log(`received ACK for ${coapMsg.messageId.toString(16)}, stopping retransmission...`);
+						debug(`received ACK for ${coapMsg.messageId.toString(16)}, stopping retransmission...`);
 						CoapClient.stopRetransmission(request);
 					}
 
@@ -415,7 +419,7 @@ export class CoapClient {
 
 					// also acknowledge the packet if neccessary
 					if (coapMsg.type === MessageType.CON) {
-						console.log(`sending ACK for ${coapMsg.messageId.toString(16)}`);
+						debug(`sending ACK for ${coapMsg.messageId.toString(16)}`);
 						const ACK = CoapClient.createMessage(
 							MessageType.ACK,
 							MessageCodes.empty,
@@ -433,7 +437,7 @@ export class CoapClient {
 						const connection = CoapClient.connections[originString];
 
 						// and send the reset
-						console.log(`sending RST for ${coapMsg.messageId.toString(16)}`);
+						debug(`sending RST for ${coapMsg.messageId.toString(16)}`);
 						const RST = CoapClient.createMessage(
 							MessageType.RST,
 							MessageCodes.empty,
@@ -499,7 +503,7 @@ export class CoapClient {
 	) {
 		if (byToken) {
 			const tokenString = request.originalMessage.token.toString("hex");
-			console.log(`remembering request with token ${tokenString}`);
+			debug(`remembering request with token ${tokenString}`);
 			CoapClient.pendingRequestsByToken[tokenString] = request;
 		}
 		if (byMsgID) {
@@ -531,7 +535,7 @@ export class CoapClient {
 		// none found, return
 		if (request == null) return;
 
-		console.log(`forgetting request: token=${request.originalMessage.token.toString("hex")}; msgID=${request.originalMessage.messageId}`);
+		debug(`forgetting request: token=${request.originalMessage.token.toString("hex")}; msgID=${request.originalMessage.messageId}`);
 
 		// stop retransmission if neccessary
 		CoapClient.stopRetransmission(request);
@@ -646,12 +650,12 @@ export class CoapClient {
 				);
 				// try connecting
 				const onConnection = () => {
-					console.log("successfully created socket for origin " + origin.toString());
+					debug("successfully created socket for origin " + origin.toString());
 					sock.removeListener("error", onError);
 					ret.resolve(new SocketWrapper(sock));
 				};
 				const onError = (e: Error) => {
-					console.log("socket creation for origin " + origin.toString() + " failed: " + e);
+					debug("socket creation for origin " + origin.toString() + " failed: " + e);
 					sock.removeListener("connected", onConnection);
 					ret.reject(e.message);
 				};
