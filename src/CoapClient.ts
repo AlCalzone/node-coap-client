@@ -122,17 +122,32 @@ export class CoapClient {
 
 	/**
 	 * Closes and forgets about connections, useful if DTLS session is reset on remote end
-	 * @param hostname - Hostname to reset, omit to reset all connections
+	 * @param originOrHostname - Origin (protocol://hostname:port) or Hostname to reset,
+	 * omit to reset all connections
 	 */
-	public static reset(hostname?: string) {
-		for (const k in CoapClient.connections) {
-			if (typeof hostname !== "undefined" && hostname !== k) {
-				continue;
+	public static reset(originOrHostname?: string | Origin) {
+		let predicate: (originString: string) => boolean;
+		if (originOrHostname != null) {
+			if (typeof originOrHostname === "string") {
+				// we were given a hostname, forget the connection if the origin's hostname matches
+				predicate = (originString: string) => Origin.parse(originString).hostname === originOrHostname;
+			} else {
+				// we were given an origin, forget the connection if its string representation matches
+				const match = originOrHostname.toString();
+				predicate = (originString: string) => originString === match;
 			}
-			if (CoapClient.connections[k].socket) {
-				CoapClient.connections[k].socket.close();
+		} else {
+			// we weren't given a filter, forget all connections
+			predicate = (originString: string) => true;
+		}
+
+		for (const originString in CoapClient.connections) {
+			if (!predicate(originString)) continue;
+
+			if (CoapClient.connections[originString].socket) {
+				CoapClient.connections[originString].socket.close();
 			}
-			delete CoapClient.connections[k];
+			delete CoapClient.connections[originString];
 		}
 	}
 
