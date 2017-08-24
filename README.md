@@ -49,6 +49,11 @@ The SecurityParameters object looks as follows, for now only PSK key exchanges a
 
 ## Changelog
 
+#### 0.2.0 (2015-08-24)
+* (bonan & AlCalzone) implemented connection reset
+* (bonan) reject response promise when retransmission fails
+* (bonan) use debug package instead of console.log
+
 #### 0.1.0 (2015-08-23)
 * (AlCalzone) release on npm
 
