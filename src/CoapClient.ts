@@ -221,6 +221,10 @@ export class CoapClient {
 
 		// are we over the limit?
 		if (request.retransmit.counter > RETRANSMISSION_PARAMS.maxRetransmit) {
+			// if this is a one-time request, reject the response promise
+			if (request.promise !== null) {
+				(request.promise as DeferredPromise<CoapResponse>).reject(new Error("Retransmit counter exceeded"));
+			}
 			// then stop retransmitting and forget the request
 			CoapClient.forgetRequest({ request });
 			return;
