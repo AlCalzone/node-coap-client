@@ -98,6 +98,21 @@ var CoapClient = (function () {
         CoapClient.dtlsParams[hostname] = params;
     };
     /**
+     * Closes and forgets about connections, useful if DTLS session is reset on remote end
+     * @param hostname - Hostname to reset, omit to reset all connections
+     */
+    CoapClient.reset = function (hostname) {
+        for (var k in CoapClient.connections) {
+            if (typeof hostname !== "undefined" && hostname !== k) {
+                continue;
+            }
+            if (CoapClient.connections[k].socket) {
+                CoapClient.connections[k].socket.close();
+            }
+            delete CoapClient.connections[k];
+        }
+    };
+    /**
      * Requests a CoAP resource
      * @param url - The URL to be requested. Must start with coap:// or coaps://
      * @param method - The request method to be used
