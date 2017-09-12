@@ -10,4 +10,5 @@ export declare class Origin {
     constructor(protocol: string, hostname: string, port: number);
     toString(): string;
     static fromUrl(url: nodeUrl.Url): Origin;
+    static parse(origin: string): Origin;
 }

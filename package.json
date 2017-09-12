@@ -1,6 +1,6 @@
 {
   "name": "node-coap-client",
-  "version": "0.0.4",
+  "version": "0.2.0",
   "description": "Clientside implementation of the CoAP protocol with DTLS support.",
   "main": "./build/CoapClient.js",
   "types": "./build/CoapClient.d.ts",
@@ -27,7 +27,8 @@
     "url": "git+https://github.com/AlCalzone/node-coap-client.git"
   },
   "dependencies": {
-    "node-dtls-client": "git+https://github.com/AlCalzone/node-dtls-client.git"
+    "debug": "^3.0.0",
+    "node-dtls-client": "^0.1.0"
   },
   "scripts": {
     "test": "nyc mocha --recursive --compilers ts-node/register --require source-map-support/register --full-trace src/**/*.test.ts"

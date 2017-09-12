@@ -17,4 +17,8 @@ export class Origin {
 	public static fromUrl(url: nodeUrl.Url): Origin {
 		return new Origin(url.protocol, url.hostname, +url.port);
 	}
+
+	public static parse(origin: string): Origin {
+		return Origin.fromUrl(nodeUrl.parse(origin));
+	}
 }

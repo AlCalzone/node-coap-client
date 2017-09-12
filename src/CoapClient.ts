@@ -1,4 +1,5 @@
 import * as crypto from "crypto";
+import * as debugPackage from "debug";
 import * as dgram from "dgram";
 import { EventEmitter } from "events";
 import { dtls } from "node-dtls-client";
@@ -9,6 +10,9 @@ import { Origin } from "./lib/Origin";
 import { SocketWrapper } from "./lib/SocketWrapper";
 import { Message, MessageCode, MessageCodes, MessageType } from "./Message";
 import { BinaryOption, NumericOption, Option, Options, StringOption } from "./Option";
+
+// initialize debugging
+const debug = debugPackage("node-coap-client");
 
 export type RequestMethod = "get" | "post" | "put" | "delete";
 
@@ -168,6 +172,37 @@ export class CoapClient {
 	}
 
 	/**
+	 * Closes and forgets about connections, useful if DTLS session is reset on remote end
+	 * @param originOrHostname - Origin (protocol://hostname:port) or Hostname to reset,
+	 * omit to reset all connections
+	 */
+	public static reset(originOrHostname?: string | Origin) {
+		let predicate: (originString: string) => boolean;
+		if (originOrHostname != null) {
+			if (typeof originOrHostname === "string") {
+				// we were given a hostname, forget the connection if the origin's hostname matches
+				predicate = (originString: string) => Origin.parse(originString).hostname === originOrHostname;
+			} else {
+				// we were given an origin, forget the connection if its string representation matches
+				const match = originOrHostname.toString();
+				predicate = (originString: string) => originString === match;
+			}
+		} else {
+			// we weren't given a filter, forget all connections
+			predicate = (originString: string) => true;
+		}
+
+		for (const originString in CoapClient.connections) {
+			if (!predicate(originString)) continue;
+
+			if (CoapClient.connections[originString].socket) {
+				CoapClient.connections[originString].socket.close();
+			}
+			delete CoapClient.connections[originString];
+		}
+	}
+
+	/**
 	 * Requests a CoAP resource
 	 * @param url - The URL to be requested. Must start with coap:// or coaps://
 	 * @param method - The request method to be used
@@ -269,12 +304,16 @@ export class CoapClient {
 
 		// are we over the limit?
 		if (request.retransmit.counter > RETRANSMISSION_PARAMS.maxRetransmit) {
+			// if this is a one-time request, reject the response promise
+			if (request.promise !== null) {
+				(request.promise as DeferredPromise<CoapResponse>).reject(new Error("Retransmit counter exceeded"));
+			}
 			// then stop retransmitting and forget the request
 			CoapClient.forgetRequest({ request });
 			return;
 		}
 
-		console.log(`retransmitting message ${msgID.toString(16)}, try #${request.retransmit.counter + 1}`);
+		debug(`retransmitting message ${msgID.toString(16)}, try #${request.retransmit.counter + 1}`);
 
 		// resend the message
 		CoapClient.send(request.connection, request.originalMessage);
@@ -403,7 +442,7 @@ export class CoapClient {
 	private static onMessage(origin: string, message: Buffer, rinfo: dgram.RemoteInfo) {
 		// parse the CoAP message
 		const coapMsg = Message.parse(message);
-		console.log(`received message: ID=${coapMsg.messageId}${(coapMsg.token && coapMsg.token.length) ? (", token=" + coapMsg.token.toString("hex")) : ""}`);
+		debug(`received message: ID=${coapMsg.messageId}${(coapMsg.token && coapMsg.token.length) ? (", token=" + coapMsg.token.toString("hex")) : ""}`);
 
 		if (coapMsg.code.isEmpty()) {
 			// ACK or RST
@@ -415,13 +454,13 @@ export class CoapClient {
 				// handle the message
 				switch (coapMsg.type) {
 					case MessageType.ACK:
-						console.log(`received ACK for ${coapMsg.messageId.toString(16)}, stopping retransmission...`);
+						debug(`received ACK for ${coapMsg.messageId.toString(16)}, stopping retransmission...`);
 						// the other party has received the message, stop resending
 						CoapClient.stopRetransmission(request);
 						break;
 					case MessageType.RST:
 						// the other party doesn't know what to do with the request, forget it
-						console.log(`received RST for ${coapMsg.messageId.toString(16)}, forgetting the request...`);
+						debug(`received RST for ${coapMsg.messageId.toString(16)}, forgetting the request...`);
 						CoapClient.forgetRequest({ request });
 						break;
 				}
@@ -439,7 +478,7 @@ export class CoapClient {
 
 					// if the message is an acknowledgement, stop resending
 					if (coapMsg.type === MessageType.ACK) {
-						console.log(`received ACK for ${coapMsg.messageId.toString(16)}, stopping retransmission...`);
+						debug(`received ACK for ${coapMsg.messageId.toString(16)}, stopping retransmission...`);
 						CoapClient.stopRetransmission(request);
 					}
 
@@ -470,7 +509,7 @@ export class CoapClient {
 
 					// also acknowledge the packet if neccessary
 					if (coapMsg.type === MessageType.CON) {
-						console.log(`sending ACK for ${coapMsg.messageId.toString(16)}`);
+						debug(`sending ACK for ${coapMsg.messageId.toString(16)}`);
 						const ACK = CoapClient.createMessage(
 							MessageType.ACK,
 							MessageCodes.empty,
@@ -491,7 +530,7 @@ export class CoapClient {
 						const connection = CoapClient.connections[originString];
 
 						// and send the reset
-						console.log(`sending RST for ${coapMsg.messageId.toString(16)}`);
+						debug(`sending RST for ${coapMsg.messageId.toString(16)}`);
 						const RST = CoapClient.createMessage(
 							MessageType.RST,
 							MessageCodes.empty,
@@ -598,7 +637,7 @@ export class CoapClient {
 	) {
 		if (byToken) {
 			const tokenString = request.originalMessage.token.toString("hex");
-			console.log(`remembering request with token ${tokenString}`);
+			debug(`remembering request with token ${tokenString}`);
 			CoapClient.pendingRequestsByToken[tokenString] = request;
 		}
 		if (byMsgID) {
@@ -630,7 +669,7 @@ export class CoapClient {
 		// none found, return
 		if (request == null) return;
 
-		console.log(`forgetting request: token=${request.originalMessage.token.toString("hex")}; msgID=${request.originalMessage.messageId}`);
+		debug(`forgetting request: token=${request.originalMessage.token.toString("hex")}; msgID=${request.originalMessage.messageId}`);
 
 		// stop retransmission if neccessary
 		CoapClient.stopRetransmission(request);
@@ -751,12 +790,12 @@ export class CoapClient {
 				);
 				// try connecting
 				const onConnection = () => {
-					console.log("successfully created socket for origin " + origin.toString());
+					debug("successfully created socket for origin " + origin.toString());
 					sock.removeListener("error", onError);
 					ret.resolve(new SocketWrapper(sock));
 				};
 				const onError = (e: Error) => {
-					console.log("socket creation for origin " + origin.toString() + " failed: " + e);
+					debug("socket creation for origin " + origin.toString() + " failed: " + e);
 					sock.removeListener("connected", onConnection);
 					ret.reject(e.message);
 				};

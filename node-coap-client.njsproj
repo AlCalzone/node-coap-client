@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{89c55675-30fc-4681-8f6a-6fc0a7436759}</ProjectGuid>
     <ProjectHome />
-    <ProjectView>ProjectFiles</ProjectView>
+    <ProjectView>ShowAllFiles</ProjectView>
     <StartupFile>
     </StartupFile>
     <WorkingDirectory>.</WorkingDirectory>
@@ -23,6 +23,7 @@
   <ItemGroup>
     <Content Include=".gitattributes" />
     <Content Include=".gitignore" />
+    <Content Include=".npmignore" />
     <Content Include="LICENSE" />
     <Content Include="package.json" />
     <Content Include="README.md" />
@@ -30,7 +31,6 @@
     <Content Include="tslint.json" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="tests\" />
     <Folder Include="src\" />
     <Folder Include="src\lib\" />
   </ItemGroup>

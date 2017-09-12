@@ -267,3 +267,6 @@ rfc/
 *.test.js
 /.nyc_output
 coverage/
+
+# npm packet files
+node-coap-client-*.tgz

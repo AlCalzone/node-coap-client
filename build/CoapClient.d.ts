@@ -1,6 +1,7 @@
 /// <reference types="node" />
 import * as nodeUrl from "url";
 import { ContentFormats } from "./ContentFormats";
+import { Origin } from "./lib/Origin";
 import { MessageCode } from "./Message";
 export declare type RequestMethod = "get" | "post" | "put" | "delete";
 /** Options to control CoAP requests */
@@ -41,6 +42,12 @@ export declare class CoapClient {
      * Sets the security params to be used for the given hostname
      */
     static setSecurityParams(hostname: string, params: SecurityParameters): void;
+    /**
+     * Closes and forgets about connections, useful if DTLS session is reset on remote end
+     * @param originOrHostname - Origin (protocol://hostname:port) or Hostname to reset,
+     * omit to reset all connections
+     */
+    static reset(originOrHostname?: string | Origin): void;
     /**
      * Requests a CoAP resource
      * @param url - The URL to be requested. Must start with coap:// or coaps://
