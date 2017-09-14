@@ -158,7 +158,7 @@ export class CoapClient {
 	/** All pending requests, sorted by the token */
 	private static pendingRequestsByToken: { [token: string]: PendingRequest } = {};
 	private static pendingRequestsByMsgID: { [msgId: number]: PendingRequest } = {};
-	private static pendingRequestsByUrl:   { [url: string]: PendingRequest } = {};
+	private static pendingRequestsByUrl: { [url: string]: PendingRequest } = {};
 	/** Array of the messages waiting to be sent */
 	private static sendQueue: QueuedMessage[] = [];
 	private static sendQueueHighPrioCount: number = 0;
