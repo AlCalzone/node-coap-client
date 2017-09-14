@@ -161,6 +161,7 @@ export class CoapClient {
 	private static pendingRequestsByUrl:   { [url: string]: PendingRequest } = {};
 	/** Array of the messages waiting to be sent */
 	private static sendQueue: QueuedMessage[] = [];
+	private static sendQueueHighPrioCount: number = 0;
 	private static isSending: boolean = false;
 	/** Number of message we expect an answer for */
 	private static concurrency: number = 0;
@@ -579,8 +580,9 @@ export class CoapClient {
 
 		// Put the message in the queue
 		if (highPriority) {
-			// in front
-			CoapClient.sendQueue.unshift({connection, message});
+			// insert at the end of the high-priority queue
+			CoapClient.sendQueue.splice(CoapClient.sendQueueHighPrioCount, 0, {connection, message});
+			CoapClient.sendQueueHighPrioCount++;
 		} else {
 			// at the end
 			CoapClient.sendQueue.push({connection, message});
@@ -605,6 +607,8 @@ export class CoapClient {
 		if (CoapClient.calculateConcurrency() < MAX_CONCURRENCY) {
 			// get the next message to send
 			const {connection, message} = CoapClient.sendQueue.shift();
+			// update the high priority count
+			if (CoapClient.sendQueueHighPrioCount > 0) CoapClient.sendQueueHighPrioCount--;
 			// send the message
 			connection.socket.send(message.serialize(), connection.origin);
 		}
