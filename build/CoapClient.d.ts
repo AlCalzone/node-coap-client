@@ -10,6 +10,8 @@ export interface RequestOptions {
     keepAlive?: boolean;
     /** Whether we expect a confirmation of the request */
     confirmable?: boolean;
+    /** Whether this message will be retransmitted on loss */
+    retransmit?: boolean;
 }
 export interface CoapResponse {
     code: MessageCode;
@@ -56,6 +58,12 @@ export declare class CoapClient {
      * @param options - Various options to control the request.
      */
     static request(url: string | nodeUrl.Url, method: RequestMethod, payload?: Buffer, options?: RequestOptions): Promise<CoapResponse>;
+    /**
+     * Pings a CoAP endpoint to check if it is alive
+     * @param target - The target to be pinged. Must be a string, NodeJS.Url or Origin and has to contain the protocol, host and port.
+     * @param timeout - (optional) Timeout in ms, after which the ping is deemed unanswered. Default: 5000ms
+     */
+    static ping(target: string | nodeUrl.Url | Origin, timeout?: number): Promise<boolean>;
     /**
      * Re-Sends a message in case it got lost
      * @param msgID
