@@ -245,6 +245,67 @@ export class CoapClient {
 	}
 
 	/**
+	 * Pings a CoAP endpoint to check if it is alive
+	 * @param origin - The Origin to be pinged: coap(s)://hostname:port
+	 * @param timeout - (optional) Timeout in ms, after which the ping is deemed unanswered. Default: 5000ms
+	 */
+	public static async ping(
+		origin: Origin,
+		timeout: number = 5000,
+	): Promise<boolean> {
+
+		// retrieve or create the connection we're going to use
+		const originString = origin.toString();
+		const connection = await this.getConnection(origin);
+
+		// create the promise we're going to return
+		const response = createDeferredPromise<CoapResponse>();
+
+		// create the message we're going to send.
+		// An empty message with type CON equals a ping and provokes a RST from the server
+		const messageId = connection.lastMsgId = incrementMessageID(connection.lastMsgId);
+		const message = CoapClient.createMessage(
+			MessageType.CON,
+			MessageCodes.empty,
+			messageId,
+		);
+
+		// remember the request
+		const req: PendingRequest = {
+			connection,
+			url: originString,
+			originalMessage: message,
+			retransmit: null,
+			keepAlive: true,
+			callback: null,
+			observe: false,
+			promise: response,
+		};
+		// remember the request
+		CoapClient.rememberRequest(req);
+
+		// now send the message
+		CoapClient.send(connection, message);
+		// fail the ping after the timeout has passed
+		const failTimeout = setTimeout(() => response.reject(), timeout);
+
+		let success: boolean;
+		try {
+			// now wait for success or failure
+			await response;
+			success = true;
+		} catch (e) {
+			success = false;
+		} finally {
+			// cleanup
+			clearTimeout(failTimeout);
+			CoapClient.forgetRequest({request: req});
+		}
+
+		return success;
+	}
+
+	/**
 	 * Re-Sends a message in case it got lost
 	 * @param msgID
 	 */
@@ -406,10 +467,20 @@ export class CoapClient {
 						// the other party has received the message, stop resending
 						CoapClient.stopRetransmission(request);
 						break;
+
 					case MessageType.RST:
-						// the other party doesn't know what to do with the request, forget it
-						debug(`received RST for ${coapMsg.messageId.toString(16)}, forgetting the request...`);
-						CoapClient.forgetRequest({ request });
+						if (
+							request.originalMessage.type === MessageType.CON &&
+							request.originalMessage.code === MessageCodes.empty
+						) { // this message was a ping (empty CON, answered by RST)
+							// resolve the promise
+							debug(`received response to ping ${coapMsg.messageId.toString(16)}`);
+							(request.promise as DeferredPromise<CoapResponse>).resolve();
+						} else {
+							// the other party doesn't know what to do with the request, forget it
+							debug(`received RST for ${coapMsg.messageId.toString(16)}, forgetting the request...`);
+							CoapClient.forgetRequest({ request });
+						}
 						break;
 				}
 			}

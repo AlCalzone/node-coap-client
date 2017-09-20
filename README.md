@@ -49,21 +49,24 @@ The SecurityParameters object looks as follows, for now only PSK key exchanges a
 
 ## Changelog
 
-#### 0.2.0 (2015-08-24)
+#### 0.3.0 (2017-09-20)
+* (AlCalzone) support CoAP ping (empty CON message)
+
+#### 0.2.0 (2017-08-24)
 * (bonan & AlCalzone) implemented connection reset
 * (bonan) reject response promise when retransmission fails
 * (bonan) use debug package instead of console.log
 
-#### 0.1.0 (2015-08-23)
+#### 0.1.0 (2017-08-23)
 * (AlCalzone) release on npm
 
-#### 0.0.4 (2015-08-09)
+#### 0.0.4 (2017-08-09)
 * (AlCalzone) bugfixes
 
-#### 0.0.3 (2015-08-01)
+#### 0.0.3 (2017-08-01)
 * (AlCalzone) reliability improvements
 
-#### 0.0.2 (2015-07-25)
+#### 0.0.2 (2017-07-25)
 * (AlCalzone) implemented retransmission of lost messages.
 
 #### 0.0.1
