@@ -22,6 +22,8 @@ export interface RequestOptions {
 	keepAlive?: boolean;
 	/** Whether we expect a confirmation of the request */
 	confirmable?: boolean;
+	/** Whether this message will be retransmitted on loss */
+	retransmit?: boolean;
 }
 
 export interface CoapResponse {
@@ -224,8 +226,9 @@ export class CoapClient {
 
 		// ensure we have options and set the default params
 		options = options || {};
-		options.confirmable = options.confirmable || true;
-		options.keepAlive = options.keepAlive || true;
+		if (options.confirmable == null) options.confirmable = true;
+		if (options.keepAlive == null) options.keepAlive = true;
+		if (options.retransmit == null) options.retransmit = true;
 
 		// retrieve or create the connection we're going to use
 		const origin = Origin.fromUrl(url);
@@ -263,7 +266,7 @@ export class CoapClient {
 
 		// create the retransmission info
 		let retransmit: RetransmissionInfo;
-		if (type === MessageType.CON) {
+		if (options.retransmit && type === MessageType.CON) {
 			const timeout = CoapClient.getRetransmissionInterval();
 			retransmit = {
 				timeout,
@@ -292,6 +295,74 @@ export class CoapClient {
 
 		return response;
 
+	}
+
+	/**
+	 * Pings a CoAP endpoint to check if it is alive
+	 * @param target - The target to be pinged. Must be a string, NodeJS.Url or Origin and has to contain the protocol, host and port.
+	 * @param timeout - (optional) Timeout in ms, after which the ping is deemed unanswered. Default: 5000ms
+	 */
+	public static async ping(
+		target: string | nodeUrl.Url | Origin,
+		timeout: number = 5000,
+	): Promise<boolean> {
+
+		// parse/convert url
+		if (typeof target === "string") {
+			target = Origin.parse(target);
+		} else if (!(target instanceof Origin)) { // is a nodeUrl
+			target = Origin.fromUrl(target);
+		}
+
+		// retrieve or create the connection we're going to use
+		const originString = target.toString();
+		const connection = await this.getConnection(target);
+
+		// create the promise we're going to return
+		const response = createDeferredPromise<CoapResponse>();
+
+		// create the message we're going to send.
+		// An empty message with type CON equals a ping and provokes a RST from the server
+		const messageId = connection.lastMsgId = incrementMessageID(connection.lastMsgId);
+		const message = CoapClient.createMessage(
+			MessageType.CON,
+			MessageCodes.empty,
+			messageId,
+		);
+
+		// remember the request
+		const req: PendingRequest = {
+			connection,
+			url: originString,
+			originalMessage: message,
+			retransmit: null,
+			keepAlive: true,
+			callback: null,
+			observe: false,
+			promise: response,
+		};
+		// remember the request
+		CoapClient.rememberRequest(req);
+
+		// now send the message
+		CoapClient.send(connection, message);
+		// fail the ping after the timeout has passed
+		const failTimeout = setTimeout(() => response.reject(), timeout);
+
+		let success: boolean;
+		try {
+			// now wait for success or failure
+			await response;
+			success = true;
+		} catch (e) {
+			success = false;
+		} finally {
+			// cleanup
+			clearTimeout(failTimeout);
+			CoapClient.forgetRequest({request: req});
+		}
+
+		return success;
 	}
 
 	/**
@@ -356,8 +427,9 @@ export class CoapClient {
 
 		// ensure we have options and set the default params
 		options = options || {};
-		options.confirmable = options.confirmable || true;
-		options.keepAlive = options.keepAlive || true;
+		if (options.confirmable == null) options.confirmable = true;
+		if (options.keepAlive == null) options.keepAlive = true;
+		if (options.retransmit == null) options.retransmit = true;
 
 		// retrieve or create the connection we're going to use
 		const origin = Origin.fromUrl(url);
@@ -395,7 +467,7 @@ export class CoapClient {
 
 		// create the retransmission info
 		let retransmit: RetransmissionInfo;
-		if (type === MessageType.CON) {
+		if (options.retransmit && type === MessageType.CON) {
 			const timeout = CoapClient.getRetransmissionInterval();
 			retransmit = {
 				timeout,
@@ -459,10 +531,20 @@ export class CoapClient {
 						// the other party has received the message, stop resending
 						CoapClient.stopRetransmission(request);
 						break;
+
 					case MessageType.RST:
-						// the other party doesn't know what to do with the request, forget it
-						debug(`received RST for ${coapMsg.messageId.toString(16)}, forgetting the request...`);
-						CoapClient.forgetRequest({ request });
+						if (
+							request.originalMessage.type === MessageType.CON &&
+							request.originalMessage.code === MessageCodes.empty
+						) { // this message was a ping (empty CON, answered by RST)
+							// resolve the promise
+							debug(`received response to ping ${coapMsg.messageId.toString(16)}`);
+							(request.promise as DeferredPromise<CoapResponse>).resolve();
+						} else {
+							// the other party doesn't know what to do with the request, forget it
+							debug(`received RST for ${coapMsg.messageId.toString(16)}, forgetting the request...`);
+							CoapClient.forgetRequest({ request });
+						}
 						break;
 				}
 			}
