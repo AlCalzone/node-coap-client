@@ -670,6 +670,7 @@ export class CoapClient {
 			// at the end
 			CoapClient.sendQueue.push({connection, message});
 		}
+		debug(`added message to send queue, new length = ${CoapClient.sendQueue.length} (high prio: ${CoapClient.sendQueueHighPrioCount})`);
 
 		// if there's a request for this message, listen for concurrency changes
 		const request = CoapClient.findRequest({msgID: message.messageId});
@@ -684,9 +685,13 @@ export class CoapClient {
 	private static workOffSendQueue() {
 
 		// check if there are messages to send
-		if (CoapClient.sendQueue.length === 0) return;
+		if (CoapClient.sendQueue.length === 0) {
+			debug(`workOffSendQueue > queue empty`);
+			return;
+		}
 
 		// check if we may send a message now
+		debug(`workOffSendQueue > concurrency = ${CoapClient.calculateConcurrency()} (MAX ${MAX_CONCURRENCY})`);
 		if (CoapClient.calculateConcurrency() < MAX_CONCURRENCY) {
 			// get the next message to send
 			const {connection, message} = CoapClient.sendQueue.shift();
