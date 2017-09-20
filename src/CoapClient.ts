@@ -246,17 +246,24 @@ export class CoapClient {
 
 	/**
 	 * Pings a CoAP endpoint to check if it is alive
-	 * @param origin - The Origin to be pinged: coap(s)://hostname:port
+	 * @param target - The target to be pinged. Must be a string, NodeJS.Url or Origin and has to contain the protocol, host and port.
 	 * @param timeout - (optional) Timeout in ms, after which the ping is deemed unanswered. Default: 5000ms
 	 */
 	public static async ping(
-		origin: Origin,
+		target: string | nodeUrl.Url | Origin,
 		timeout: number = 5000,
 	): Promise<boolean> {
 
+		// parse/convert url
+		if (typeof target === "string") {
+			target = Origin.parse(target);
+		} else if (!(target instanceof Origin)) { // is a nodeUrl
+			target = Origin.fromUrl(target);
+		}
+
 		// retrieve or create the connection we're going to use
-		const originString = origin.toString();
-		const connection = await this.getConnection(origin);
+		const originString = target.toString();
+		const connection = await this.getConnection(target);
 
 		// create the promise we're going to return
 		const response = createDeferredPromise<CoapResponse>();

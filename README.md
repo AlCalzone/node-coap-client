@@ -47,6 +47,19 @@ The SecurityParameters object looks as follows, for now only PSK key exchanges a
 }
 ```
 
+Ping a CoAP origin:
+```
+coap
+	.ping(
+		target /* string | url | Origin */,
+		[timeout /* number, time in ms */]
+	)
+	.then(success => { /* handle response */})
+	.catch(err => { /* handle error */ })
+	;
+```
+The target must be a string or url of the form `coap(s)://hostname:port` or an instance of the `Origin` class. The optional timeout (default 5000ms) determines when a ping is deemed as failed.
+
 ## Changelog
 
 #### 0.3.0 (2017-09-20)
