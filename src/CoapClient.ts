@@ -331,7 +331,7 @@ export class CoapClient {
 		);
 
 		// remember the request
-		const req: PendingRequest = {
+		const req = new PendingRequest({
 			connection,
 			url: originString,
 			originalMessage: message,
@@ -340,7 +340,8 @@ export class CoapClient {
 			callback: null,
 			observe: false,
 			promise: response,
-		};
+			concurrency: 1, // requests count as concurrent until they are completed
+		});
 		// remember the request
 		CoapClient.rememberRequest(req);
 
