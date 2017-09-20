@@ -21,6 +21,8 @@ export interface RequestOptions {
 	keepAlive?: boolean;
 	/** Whether we expect a confirmation of the request */
 	confirmable?: boolean;
+	/** Whether this message will be retransmitted on loss */
+	retransmit?: boolean;
 }
 
 export interface CoapResponse {
@@ -172,8 +174,9 @@ export class CoapClient {
 
 		// ensure we have options and set the default params
 		options = options || {};
-		options.confirmable = options.confirmable || true;
-		options.keepAlive = options.keepAlive || true;
+		if (options.confirmable == null) options.confirmable = true;
+		if (options.keepAlive == null) options.keepAlive = true;
+		if (options.retransmit == null) options.retransmit = true;
 
 		// retrieve or create the connection we're going to use
 		const origin = Origin.fromUrl(url);
@@ -211,7 +214,7 @@ export class CoapClient {
 
 		// create the retransmission info
 		let retransmit: RetransmissionInfo;
-		if (type === MessageType.CON) {
+		if (options.retransmit && type === MessageType.CON) {
 			const timeout = CoapClient.getRetransmissionInterval();
 			retransmit = {
 				timeout,
@@ -303,8 +306,9 @@ export class CoapClient {
 
 		// ensure we have options and set the default params
 		options = options || {};
-		options.confirmable = options.confirmable || true;
-		options.keepAlive = options.keepAlive || true;
+		if (options.confirmable == null) options.confirmable = true;
+		if (options.keepAlive == null) options.keepAlive = true;
+		if (options.retransmit == null) options.retransmit = true;
 
 		// retrieve or create the connection we're going to use
 		const origin = Origin.fromUrl(url);
@@ -342,7 +346,7 @@ export class CoapClient {
 
 		// create the retransmission info
 		let retransmit: RetransmissionInfo;
-		if (type === MessageType.CON) {
+		if (options.retransmit && type === MessageType.CON) {
 			const timeout = CoapClient.getRetransmissionInterval();
 			retransmit = {
 				timeout,
