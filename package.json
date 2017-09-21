@@ -2,6 +2,9 @@
   "name": "node-coap-client",
   "version": "0.3.1",
   "description": "Clientside implementation of the CoAP protocol with DTLS support.",
+  "keywords": [
+    "coap", "coaps", "dtls", "iot", "tradfri"
+  ],
   "main": "./build/CoapClient.js",
   "types": "./build/CoapClient.d.ts",
   "author": {
