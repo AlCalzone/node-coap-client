@@ -115,6 +115,14 @@ export declare class CoapClient {
      * @param which
      */
     private static findRequest(which);
+    /**
+     * Finds all pending requests of a given origin
+     */
+    private static findRequestsByOrigin(origin);
+    /**
+     * Tries to establish a connection to the given target. Returns true on success, false otherwise.
+     * @param target The target to connect to. Must be a string, NodeJS.Url or Origin and has to contain the protocol, host and port.
+     */
     static tryToConnect(target: string | nodeUrl.Url | Origin): Promise<boolean>;
     /**
      * Establishes a new or retrieves an existing connection to the given origin

@@ -671,6 +671,17 @@ export class CoapClient {
 		if (CoapClient.pendingRequestsByUrl.hasOwnProperty(request.url)) {
 			delete CoapClient.pendingRequestsByUrl[request.url];
 		}
+
+		// If this request doesn't have the keepAlive option,
+		// close the connection if it was the last one with the same origin
+		if (!request.keepAlive) {
+			const origin = Origin.parse(request.url);
+			const requestsOnOrigin: number = CoapClient.findRequestsByOrigin(origin).length;
+			if (requestsOnOrigin === 0) {
+				// this was the last request, close the connection
+				CoapClient.reset(origin);
+			}
+		}
 	}
 
 	/**
@@ -700,6 +711,18 @@ export class CoapClient {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Finds all pending requests of a given origin
+	 */
+	private static findRequestsByOrigin(origin: Origin): PendingRequest[] {
+		const originString = origin.toString();
+		return Object
+			.keys(CoapClient.pendingRequestsByMsgID)
+			.map(msgID => CoapClient.pendingRequestsByMsgID[msgID])
+			.filter((req: PendingRequest) => Origin.parse(req.url).toString() === originString)
+			;
 	}
 
 	/**
