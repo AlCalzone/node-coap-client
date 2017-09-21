@@ -115,6 +115,7 @@ export declare class CoapClient {
      * @param which
      */
     private static findRequest(which);
+    static tryToConnect(target: string | nodeUrl.Url | Origin): Promise<boolean>;
     /**
      * Establishes a new or retrieves an existing connection to the given origin
      * @param origin - The other party

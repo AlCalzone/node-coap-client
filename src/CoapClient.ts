@@ -181,7 +181,7 @@ export class CoapClient {
 		// retrieve or create the connection we're going to use
 		const origin = Origin.fromUrl(url);
 		const originString = origin.toString();
-		const connection = await this.getConnection(origin);
+		const connection = await CoapClient.getConnection(origin);
 
 		// find all the message parameters
 		const type = options.confirmable ? MessageType.CON : MessageType.NON;
@@ -263,7 +263,7 @@ export class CoapClient {
 
 		// retrieve or create the connection we're going to use
 		const originString = target.toString();
-		const connection = await this.getConnection(target);
+		const connection = await CoapClient.getConnection(target);
 
 		// create the promise we're going to return
 		const response = createDeferredPromise<CoapResponse>();
@@ -381,7 +381,7 @@ export class CoapClient {
 		// retrieve or create the connection we're going to use
 		const origin = Origin.fromUrl(url);
 		const originString = origin.toString();
-		const connection = await this.getConnection(origin);
+		const connection = await CoapClient.getConnection(origin);
 
 		// find all the message parameters
 		const type = options.confirmable ? MessageType.CON : MessageType.NON;
@@ -703,6 +703,28 @@ export class CoapClient {
 	}
 
 	/**
+	 * Tries to establish a connection to the given target. Returns true on success, false otherwise.
+	 * @param target The target to connect to. Must be a string, NodeJS.Url or Origin and has to contain the protocol, host and port.
+	 */
+	public static async tryToConnect(target: string | nodeUrl.Url | Origin): Promise<boolean> {
+		// parse/convert url
+		if (typeof target === "string") {
+			target = Origin.parse(target);
+		} else if (!(target instanceof Origin)) { // is a nodeUrl
+			target = Origin.fromUrl(target);
+		}
+
+		// retrieve or create the connection we're going to use
+		const originString = target.toString();
+		try {
+			await CoapClient.getConnection(target);
+			return true;
+		} catch (e) {
+			return false;
+		}
+	}
+
+	/**
 	 * Establishes a new or retrieves an existing connection to the given origin
 	 * @param origin - The other party
 	 */
@@ -728,7 +750,7 @@ export class CoapClient {
 
 			// add the event handler
 			socket.on("message", CoapClient.onMessage.bind(CoapClient, originString));
-			// initialize the connection params
+			// initialize the connection params and remember them
 			const ret = CoapClient.connections[originString] = {
 				origin,
 				socket,
