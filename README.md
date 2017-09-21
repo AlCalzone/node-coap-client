@@ -62,6 +62,10 @@ The target must be a string or url of the form `coap(s)://hostname:port` or an i
 
 ## Changelog
 
+#### 0.3.1 (2017-09-21)
+* (AlCalzone) make keepAlive option actually do something
+* (AlCalzone) Add tryToConnect function to preemptively test and connect to a resource
+
 #### 0.3.0 (2017-09-20)
 * (AlCalzone) support CoAP ping (empty CON message)
 
