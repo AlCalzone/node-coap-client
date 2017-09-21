@@ -1,6 +1,6 @@
 {
   "name": "node-coap-client",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Clientside implementation of the CoAP protocol with DTLS support.",
   "keywords": [
     "coap", "coaps", "dtls", "iot", "tradfri"
@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "debug": "^3.0.0",
-    "node-dtls-client": "^0.1.0"
+    "node-dtls-client": "^0.2.0"
   },
   "scripts": {
     "test": "nyc mocha --recursive --compilers ts-node/register --require source-map-support/register --full-trace src/**/*.test.ts",

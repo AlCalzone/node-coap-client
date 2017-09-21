@@ -1,5 +1,4 @@
 import * as crypto from "crypto";
-import * as debugPackage from "debug";
 import * as dgram from "dgram";
 import { dtls } from "node-dtls-client";
 import * as nodeUrl from "url";
@@ -11,6 +10,7 @@ import { Message, MessageCode, MessageCodes, MessageType } from "./Message";
 import { BinaryOption, NumericOption, Option, Options, StringOption } from "./Option";
 
 // initialize debugging
+import * as debugPackage from "debug";
 const debug = debugPackage("node-coap-client");
 
 export type RequestMethod = "get" | "post" | "put" | "delete";
@@ -146,6 +146,7 @@ export class CoapClient {
 		for (const originString in CoapClient.connections) {
 			if (!predicate(originString)) continue;
 
+			debug(`closing connection to ${originString}`);
 			if (CoapClient.connections[originString].socket) {
 				CoapClient.connections[originString].socket.close();
 			}
