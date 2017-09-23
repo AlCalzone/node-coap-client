@@ -14,6 +14,10 @@ import { BinaryOption, NumericOption, Option, Options, StringOption } from "./Op
 import * as debugPackage from "debug";
 const debug = debugPackage("node-coap-client");
 
+// print version info
+const npmVersion = require("../package.json").version;
+debug(`CoAP client version ${npmVersion}`);
+
 export type RequestMethod = "get" | "post" | "put" | "delete";
 
 /** Options to control CoAP requests */
@@ -156,18 +160,21 @@ export class CoapClient {
 
 	/** Table of all open connections and their parameters, sorted by the origin "coap(s)://host:port" */
 	private static connections: { [origin: string]: ConnectionInfo } = {};
+	/** Queue of the connections waiting to be established */
+	private static pendingConnections: { [origin: string]: DeferredPromise<ConnectionInfo> } = {};
+	private static isConnecting: boolean = false;
 	/** Table of all known security params, sorted by the hostname */
 	private static dtlsParams: { [hostname: string]: SecurityParameters } = {};
 	/** All pending requests, sorted by the token */
 	private static pendingRequestsByToken: { [token: string]: PendingRequest } = {};
 	private static pendingRequestsByMsgID: { [msgId: number]: PendingRequest } = {};
 	private static pendingRequestsByUrl: { [url: string]: PendingRequest } = {};
-	/** Array of the messages waiting to be sent */
+	/** Queue of the messages waiting to be sent */
 	private static sendQueue: QueuedMessage[] = [];
 	private static sendQueueHighPrioCount: number = 0;
-	private static isSending: boolean = false;
 	/** Number of message we expect an answer for */
 	private static concurrency: number = 0;
+
 	/**
 	 * Sets the security params to be used for the given hostname
 	 */
@@ -679,7 +686,8 @@ export class CoapClient {
 		const request = CoapClient.findRequest({msgID: message.messageId});
 		if (request != null) {
 			// and continue working off the queue when it drops
-			request.on("concurrencyChanged", (req) => {
+			request.on("concurrencyChanged", (req: PendingRequest) => {
+				debug(`request ${message.messageId.toString(16)}: concurrency changed => ${req.concurrency}`);
 				if (request.concurrency === 0) CoapClient.workOffSendQueue();
 			});
 		}
@@ -736,9 +744,9 @@ export class CoapClient {
 		byMsgID: boolean = true,
 		byToken: boolean = true,
 	) {
+		debug(`remembering request: msgID=${request.originalMessage.messageId.toString(16)}, token=${request.originalMessage.token.toString("hex")}, url=${request.url}`);
 		if (byToken) {
 			const tokenString = request.originalMessage.token.toString("hex");
-			debug(`remembering request with token ${tokenString}`);
 			CoapClient.pendingRequestsByToken[tokenString] = request;
 		}
 		if (byMsgID) {
@@ -875,38 +883,74 @@ export class CoapClient {
 	 * Establishes a new or retrieves an existing connection to the given origin
 	 * @param origin - The other party
 	 */
-	private static async getConnection(origin: Origin): Promise<ConnectionInfo> {
+	private static getConnection(origin: Origin): Promise<ConnectionInfo> {
 		const originString = origin.toString();
 		if (CoapClient.connections.hasOwnProperty(originString)) {
+			debug(`getConnection(${originString}) => found existing connection`);
 			// return existing connection
-			return CoapClient.connections[originString];
+			return Promise.resolve(CoapClient.connections[originString]);
+		} else if (CoapClient.pendingConnections.hasOwnProperty(originString)) {
+			debug(`getConnection(${originString}) => connection is pending`);
+			// return the pending connection
+			return CoapClient.pendingConnections[originString];
 		} else {
-			// Try a few times to setup a working connection
-			const maxTries = 3;
-			let socket: SocketWrapper;
-			for (let i = 1; i <= maxTries; i++) {
-				try {
-					socket = await CoapClient.getSocket(origin);
-					break; // it worked
-				} catch (e) {
-					// if we are going to try again, ignore the error
-					// else throw it
-					if (i === maxTries) throw e;
-				}
-			}
-
-			// add the event handler
-			socket.on("message", CoapClient.onMessage.bind(CoapClient, originString));
-			// initialize the connection params and remember them
-			const ret = CoapClient.connections[originString] = {
-				origin,
-				socket,
-				lastMsgId: 0,
-				lastToken: crypto.randomBytes(TOKEN_LENGTH),
-			};
-			// and return it
+			debug(`getConnection(${originString}) => establishing new connection`);
+			// create a promise and start the connection queue
+			const ret = createDeferredPromise<ConnectionInfo>();
+			CoapClient.pendingConnections[originString] = ret;
+			setTimeout(CoapClient.workOffPendingConnections, 0);
 			return ret;
 		}
+	}
+
+	private static async workOffPendingConnections(): Promise<void> {
+
+		if (Object.keys(CoapClient.pendingConnections).length === 0) {
+			// no more pending connections, we're done
+			CoapClient.isConnecting = false;
+			return;
+		} else if (CoapClient.isConnecting) {
+			// we're already busy
+			return;
+		}
+		CoapClient.isConnecting = true;
+
+		// Get the connection to establish
+		const originString = Object.keys(CoapClient.pendingConnections)[0];
+		const origin = Origin.parse(originString);
+		const promise = CoapClient.pendingConnections[originString];
+		delete CoapClient.pendingConnections[originString];
+
+		// Try a few times to setup a working connection
+		const maxTries = 3;
+		let socket: SocketWrapper;
+		for (let i = 1; i <= maxTries; i++) {
+			try {
+				socket = await CoapClient.getSocket(origin);
+				break; // it worked
+			} catch (e) {
+				// if we are going to try again, ignore the error
+				// else throw it
+				if (i === maxTries) promise.reject(e);
+			}
+		}
+
+		// add the event handler
+		socket.on("message", CoapClient.onMessage.bind(CoapClient, originString));
+		// initialize the connection params and remember them
+		const ret = CoapClient.connections[originString] = {
+			origin,
+			socket,
+			lastMsgId: 0,
+			lastToken: crypto.randomBytes(TOKEN_LENGTH),
+		};
+		// and resolve the deferred promise
+		promise.resolve(ret);
+
+		// continue working off the queue
+		CoapClient.isConnecting = false;
+		setTimeout(CoapClient.workOffPendingConnections, 0);
+		
 	}
 
 	/**

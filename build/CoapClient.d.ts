@@ -29,16 +29,18 @@ export interface SecurityParameters {
 export declare class CoapClient {
     /** Table of all open connections and their parameters, sorted by the origin "coap(s)://host:port" */
     private static connections;
+    /** Queue of the connections waiting to be established */
+    private static pendingConnections;
+    private static isConnecting;
     /** Table of all known security params, sorted by the hostname */
     private static dtlsParams;
     /** All pending requests, sorted by the token */
     private static pendingRequestsByToken;
     private static pendingRequestsByMsgID;
     private static pendingRequestsByUrl;
-    /** Array of the messages waiting to be sent */
+    /** Queue of the messages waiting to be sent */
     private static sendQueue;
     private static sendQueueHighPrioCount;
-    private static isSending;
     /** Number of message we expect an answer for */
     private static concurrency;
     /**
@@ -140,6 +142,7 @@ export declare class CoapClient {
      * @param origin - The other party
      */
     private static getConnection(origin);
+    private static workOffPendingConnections();
     /**
      * Establishes or retrieves a socket that can be used to send to and receive data from the given origin
      * @param origin - The other party

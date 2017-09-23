@@ -62,6 +62,9 @@ The target must be a string or url of the form `coap(s)://hostname:port` or an i
 
 ## Changelog
 
+#### 0.4.1 (2017-09-23)
+* (AlCalzone) Prevent a race condition while creating new connections
+
 #### 0.4.0 (2017-09-23)
 * (AlCalzone) Limit the number of concurrent requests
 
