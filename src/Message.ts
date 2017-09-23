@@ -1,4 +1,4 @@
-﻿import { Option } from "./Option";
+import { Option } from "./Option";
 
 export enum MessageType {
 	CON = 0, // Confirmable

@@ -35,6 +35,12 @@ export declare class CoapClient {
     private static pendingRequestsByToken;
     private static pendingRequestsByMsgID;
     private static pendingRequestsByUrl;
+    /** Array of the messages waiting to be sent */
+    private static sendQueue;
+    private static sendQueueHighPrioCount;
+    private static isSending;
+    /** Number of message we expect an answer for */
+    private static concurrency;
     /**
      * Sets the security params to be used for the given hostname
      */
@@ -91,9 +97,14 @@ export declare class CoapClient {
     private static createMessage(type, code, messageId, token?, options?, payload?);
     /**
      * Send a CoAP message to the given endpoint
-     * @param connection
+     * @param connection The connection to send the message on
+     * @param message The message to send
+     * @param highPriority Whether the message should be prioritized
      */
-    private static send(connection, message);
+    private static send(connection, message, highPriority?);
+    private static workOffSendQueue();
+    /** Calculates the current concurrency, i.e. how many parallel requests are being handled */
+    private static calculateConcurrency();
     /**
      * Remembers a request for resending lost messages and tracking responses and updates
      * @param request

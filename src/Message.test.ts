@@ -1,4 +1,4 @@
-﻿import { expect } from "chai";
+import { expect } from "chai";
 
 import { Message, MessageCode, MessageCodes, MessageType } from "./Message";
 

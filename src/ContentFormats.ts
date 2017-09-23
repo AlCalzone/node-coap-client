@@ -1,4 +1,4 @@
-﻿export enum ContentFormats {
+export enum ContentFormats {
 	text_plain = 0,
 	application_linkFormat  = 40,
 	application_xml         = 41,

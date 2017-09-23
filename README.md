@@ -62,6 +62,9 @@ The target must be a string or url of the form `coap(s)://hostname:port` or an i
 
 ## Changelog
 
+#### 0.4.0 (2017-09-XX)
+* (AlCalzone) Limit the number of concurrent requests
+
 #### 0.3.2 (2017-09-21)
 * (AlCalzone) Update DTLS library: Alert protocol support
 
