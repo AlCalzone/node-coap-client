@@ -15,6 +15,7 @@ import * as debugPackage from "debug";
 const debug = debugPackage("node-coap-client");
 
 // print version info
+// tslint:disable-next-line:no-var-requires
 const npmVersion = require("../package.json").version;
 debug(`CoAP client version ${npmVersion}`);
 
@@ -744,9 +745,9 @@ export class CoapClient {
 		byMsgID: boolean = true,
 		byToken: boolean = true,
 	) {
-		debug(`remembering request: msgID=${request.originalMessage.messageId.toString(16)}, token=${request.originalMessage.token.toString("hex")}, url=${request.url}`);
-		if (byToken) {
-			const tokenString = request.originalMessage.token.toString("hex");
+		let tokenString: string = "";
+		if (byToken && request.originalMessage.token != null) {
+			tokenString = request.originalMessage.token.toString("hex");
 			CoapClient.pendingRequestsByToken[tokenString] = request;
 		}
 		if (byMsgID) {
@@ -755,6 +756,7 @@ export class CoapClient {
 		if (byUrl) {
 			CoapClient.pendingRequestsByUrl[request.url] = request;
 		}
+		debug(`remembering request: msgID=${request.originalMessage.messageId.toString(16)}, token=${tokenString}, url=${request.url}`);
 	}
 
 	/**
@@ -931,7 +933,10 @@ export class CoapClient {
 			} catch (e) {
 				// if we are going to try again, ignore the error
 				// else throw it
-				if (i === maxTries) promise.reject(e);
+				if (i === maxTries) {
+					promise.reject(e);
+					return;
+				}
 			}
 		}
 
@@ -950,7 +955,6 @@ export class CoapClient {
 		// continue working off the queue
 		CoapClient.isConnecting = false;
 		setTimeout(CoapClient.workOffPendingConnections, 0);
-		
 	}
 
 	/**
