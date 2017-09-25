@@ -935,22 +935,23 @@ export class CoapClient {
 				// else throw it
 				if (i === maxTries) {
 					promise.reject(e);
-					return;
 				}
 			}
 		}
 
-		// add the event handler
-		socket.on("message", CoapClient.onMessage.bind(CoapClient, originString));
-		// initialize the connection params and remember them
-		const ret = CoapClient.connections[originString] = {
-			origin,
-			socket,
-			lastMsgId: 0,
-			lastToken: crypto.randomBytes(TOKEN_LENGTH),
-		};
-		// and resolve the deferred promise
-		promise.resolve(ret);
+		if (socket != null) {
+			// add the event handler
+			socket.on("message", CoapClient.onMessage.bind(CoapClient, originString));
+			// initialize the connection params and remember them
+			const ret = CoapClient.connections[originString] = {
+				origin,
+				socket,
+				lastMsgId: 0,
+				lastToken: crypto.randomBytes(TOKEN_LENGTH),
+			};
+			// and resolve the deferred promise
+			promise.resolve(ret);
+		}
 
 		// continue working off the queue
 		CoapClient.isConnecting = false;
