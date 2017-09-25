@@ -3,7 +3,11 @@
   "version": "0.4.1",
   "description": "Clientside implementation of the CoAP protocol with DTLS support.",
   "keywords": [
-    "coap", "coaps", "dtls", "iot", "tradfri"
+    "coap",
+    "coaps",
+    "dtls",
+    "iot",
+    "tradfri"
   ],
   "main": "./build/CoapClient.js",
   "types": "./build/CoapClient.d.ts",
@@ -14,23 +18,23 @@
   "license": "MIT",
   "homepage": "https://github.com/AlCalzone/node-coap-client",
   "devDependencies": {
-    "@types/chai": "^4.0.0",
-    "@types/mocha": "^2.2.41",
-    "@types/node": "^6.0.78",
-    "chai": "^4.0.2",
-    "mocha": "^3.4.2",
-    "nyc": "^11.0.2",
-    "source-map-support": "^0.4.15",
-    "ts-node": "^3.0.6",
-    "tslint": "^5.6.0",
-    "typescript": "^2.3.4"
+    "@types/chai": "^4.0.4",
+    "@types/mocha": "^2.2.43",
+    "@types/node": "^6.0.88",
+    "chai": "^4.1.2",
+    "mocha": "^3.5.3",
+    "nyc": "^11.2.1",
+    "source-map-support": "^0.4.18",
+    "ts-node": "^3.3.0",
+    "tslint": "^5.7.0",
+    "typescript": "^2.5.2"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AlCalzone/node-coap-client.git"
   },
   "dependencies": {
-    "debug": "^3.0.0",
+    "debug": "^3.0.1",
     "node-dtls-client": "^0.2.0"
   },
   "scripts": {
