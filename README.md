@@ -62,7 +62,7 @@ The target must be a string or url of the form `coap(s)://hostname:port` or an i
 
 ## Changelog
 
-#### 0.4.2 (2017-09-25)
+#### 0.4.3 (2017-09-25)
 * (AlCalzone) Bugfixes
 
 #### 0.4.1 (2017-09-23)
