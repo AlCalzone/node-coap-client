@@ -3,7 +3,7 @@ Clientside implementation of the CoAP protocol with DTLS support
 
 ## Usage
 
-Request a CoAP resource:
+### Request a CoAP resource
 ```
 const coap = require("node-coap-client").CoapClient;
 
@@ -47,7 +47,7 @@ The SecurityParameters object looks as follows, for now only PSK key exchanges a
 }
 ```
 
-Ping a CoAP origin:
+### Ping a CoAP origin
 ```
 coap
 	.ping(
