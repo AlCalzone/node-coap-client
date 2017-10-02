@@ -189,6 +189,7 @@ export class CoapClient {
 	 * omit to reset all connections
 	 */
 	public static reset(originOrHostname?: string | Origin) {
+		debug(`reset(${originOrHostname || ""})`);
 		let predicate: (originString: string) => boolean;
 		if (originOrHostname != null) {
 			if (typeof originOrHostname === "string") {
@@ -204,6 +205,28 @@ export class CoapClient {
 			predicate = (originString: string) => true;
 		}
 
+		// forget all pending requests matching the predicate
+		for (const msgId of Object.keys(CoapClient.pendingRequestsByMsgID)) {
+			// check if the request matches the predicate
+			const request: PendingRequest = CoapClient.pendingRequestsByMsgID[msgId];
+			const originString = Origin.parse(request.url).toString();
+			if (!predicate(originString)) continue;
+
+			// and forget it if so
+			if (request.promise != null) (request.promise as DeferredPromise<CoapResponse>).reject("CoapClient was reset");
+			CoapClient.forgetRequest({ request });
+		}
+
+		// cancel all pending connections matching the predicate
+		for (const originString of Object.keys(CoapClient.pendingConnections)) {
+			if (!predicate(originString)) continue;
+
+			debug(`canceling pending connection to ${originString}`);
+			CoapClient.pendingConnections[originString].reject("CoapClient was reset");
+			delete CoapClient.pendingConnections[originString];
+		}
+
+		// forget all connections matching the predicate
 		for (const originString in CoapClient.connections) {
 			if (!predicate(originString)) continue;
 
