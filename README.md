@@ -1,6 +1,8 @@
 # node-coap-client
 Clientside implementation of the CoAP protocol with DTLS support
 
+*Requires NodeJS >= 6.x*
+
 ## Usage
 
 ### Request a CoAP resource
@@ -46,6 +48,7 @@ The SecurityParameters object looks as follows, for now only PSK key exchanges a
 	}
 }
 ```
+To talk to a Trådfri gateway, you need to use `Client_identity` as the identity.
 
 ### Ping a CoAP origin
 ```
