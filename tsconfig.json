@@ -10,7 +10,6 @@
         "removeComments": false,
         "inlineSourceMap": true,
         "sourceRoot": "src/",
-        "target": "es5",
-        "lib": ["es6"]
+        "target": "es2015"
     }
 }
