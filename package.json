@@ -37,6 +37,9 @@
     "debug": "^3.0.1",
     "node-dtls-client": "^0.2.1"
   },
+  "engines": {
+    "node": ">= 6.0.0"
+  },
   "scripts": {
     "test": "nyc mocha --recursive --compilers ts-node/register --require source-map-support/register --full-trace src/**/*.test.ts",
     "lint": "npm run tslint \"src/**/*.ts\"",
