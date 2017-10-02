@@ -326,7 +326,13 @@ export class CoapClient {
 
 		// retrieve or create the connection we're going to use
 		const originString = target.toString();
-		const connection = await CoapClient.getConnection(target);
+		let connection: ConnectionInfo;
+		try {
+			connection = await CoapClient.getConnection(target);
+		} catch (e) {
+			// we didn't even get a connection, so fail the ping
+			return false;
+		}
 
 		// create the promise we're going to return
 		const response = createDeferredPromise<CoapResponse>();

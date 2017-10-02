@@ -61,6 +61,9 @@ The target must be a string or url of the form `coap(s)://hostname:port` or an i
 
 ## Changelog
 
+#### 0.4.6 (2017-10-02)
+* (AlCalzone) Catch potential error in CoapClient.ping()
+
 #### 0.4.4 (2017-09-25)
 * (AlCalzone) Bugfixes
 
