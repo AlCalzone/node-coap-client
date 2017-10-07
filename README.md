@@ -48,7 +48,7 @@ The SecurityParameters object looks as follows, for now only PSK key exchanges a
 	}
 }
 ```
-To talk to a Trådfri gateway, you need to use `Client_identity` as the identity.
+To talk to a Trï¿½dfri gateway, you need to use `Client_identity` as the identity.
 
 ### Ping a CoAP origin
 ```
@@ -63,6 +63,9 @@ coap
 The target must be a string or url of the form `coap(s)://hostname:port` or an instance of the `Origin` class. The optional timeout (default 5000ms) determines when a ping is deemed as failed.
 
 ## Changelog
+
+#### 0.4.7 (2017-10-07)
+* (AlCalzone) Removed potential sources of infinite loops
 
 #### 0.4.6 (2017-10-02)
 * (AlCalzone) Catch potential error in CoapClient.ping()

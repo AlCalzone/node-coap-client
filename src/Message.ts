@@ -126,6 +126,10 @@ export class Message {
 		while (optionsStart < buf.length && buf[optionsStart] !== 0xff) {
 			// read option
 			const result = Option.parse(buf.slice(optionsStart), prevCode);
+			if (result.readBytes <= 0) {
+				// This shouldn't happen but we want to prevent infinite loops
+				throw new Error(`Zero or less bytes read while parsing packet options. The raw buffer was ${buf.toString("hex")}`);
+			}
 			options.push(result.result);
 			prevCode = result.result.code;
 			optionsStart += result.readBytes;
