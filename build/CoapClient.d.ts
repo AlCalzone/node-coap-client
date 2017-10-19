@@ -40,7 +40,6 @@ export declare class CoapClient {
     private static pendingRequestsByUrl;
     /** Queue of the messages waiting to be sent */
     private static sendQueue;
-    private static sendQueueHighPrioCount;
     /** Number of message we expect an answer for */
     private static concurrency;
     /**
