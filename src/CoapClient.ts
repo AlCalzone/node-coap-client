@@ -222,18 +222,19 @@ export class CoapClient {
 			if (request.promise != null) (request.promise as DeferredPromise<CoapResponse>).reject("CoapClient was reset");
 			CoapClient.forgetRequest({ request });
 		}
+		debug(`${Object.keys(CoapClient.pendingRequestsByMsgID).length} pending requests remaining...`);
 
 		// cancel all pending connections matching the predicate
 		for (const originString of Object.keys(CoapClient.pendingConnections)) {
 			if (!predicate(originString)) continue;
 
-			debug(`canceling pending connection to ${originString}`);
 			CoapClient.pendingConnections[originString].reject("CoapClient was reset");
 			delete CoapClient.pendingConnections[originString];
 		}
+		debug(`${Object.keys(CoapClient.pendingConnections).length} pending connections remaining...`);
 
 		// forget all connections matching the predicate
-		for (const originString in CoapClient.connections) {
+		for (const originString of Object.keys(CoapClient.connections)) {
 			if (!predicate(originString)) continue;
 
 			debug(`closing connection to ${originString}`);
@@ -242,6 +243,7 @@ export class CoapClient {
 			}
 			delete CoapClient.connections[originString];
 		}
+		debug(`${Object.keys(CoapClient.connections).length} active connections remaining...`);
 	}
 
 	/**
@@ -563,7 +565,7 @@ export class CoapClient {
 	private static onMessage(origin: string, message: Buffer, rinfo: dgram.RemoteInfo) {
 		// parse the CoAP message
 		const coapMsg = Message.parse(message);
-		debug(`received message: ID=${coapMsg.messageId}${(coapMsg.token && coapMsg.token.length) ? (", token=" + coapMsg.token.toString("hex")) : ""}`);
+		debug(`received message: ID=0x${coapMsg.messageId.toString(16)}${(coapMsg.token && coapMsg.token.length) ? (", token=" + coapMsg.token.toString("hex")) : ""}`);
 
 		if (coapMsg.code.isEmpty()) {
 			// ACK or RST
@@ -575,7 +577,7 @@ export class CoapClient {
 				// handle the message
 				switch (coapMsg.type) {
 					case MessageType.ACK:
-						debug(`received ACK for ${coapMsg.messageId.toString(16)}, stopping retransmission...`);
+						debug(`received ACK for message 0x${coapMsg.messageId.toString(16)}, stopping retransmission...`);
 						// the other party has received the message, stop resending
 						CoapClient.stopRetransmission(request);
 						break;
@@ -586,11 +588,11 @@ export class CoapClient {
 							request.originalMessage.code === MessageCodes.empty
 						) { // this message was a ping (empty CON, answered by RST)
 							// resolve the promise
-							debug(`received response to ping ${coapMsg.messageId.toString(16)}`);
+							debug(`received response to ping with ID 0x${coapMsg.messageId.toString(16)}`);
 							(request.promise as DeferredPromise<CoapResponse>).resolve();
 						} else {
 							// the other party doesn't know what to do with the request, forget it
-							debug(`received RST for ${coapMsg.messageId.toString(16)}, forgetting the request...`);
+							debug(`received RST for message 0x${coapMsg.messageId.toString(16)}, forgetting the request...`);
 							CoapClient.forgetRequest({ request });
 						}
 						break;
@@ -600,6 +602,7 @@ export class CoapClient {
 			// we are a client implementation, we should not get requests
 			// ignore them
 		} else if (coapMsg.code.isResponse()) {
+			debug(`response with payload: ${coapMsg.payload.toString("utf8")}`);
 			// this is a response, find out what to do with it
 			if (coapMsg.token && coapMsg.token.length) {
 				// this message has a token, check which request it belongs to
@@ -609,7 +612,7 @@ export class CoapClient {
 
 					// if the message is an acknowledgement, stop resending
 					if (coapMsg.type === MessageType.ACK) {
-						debug(`received ACK for ${coapMsg.messageId.toString(16)}, stopping retransmission...`);
+						debug(`received ACK for message 0x${coapMsg.messageId.toString(16)}, stopping retransmission...`);
 						CoapClient.stopRetransmission(request);
 						// reduce the request's concurrency, since it was handled on the server
 						request.concurrency = 0;
@@ -642,7 +645,7 @@ export class CoapClient {
 
 					// also acknowledge the packet if neccessary
 					if (coapMsg.type === MessageType.CON) {
-						debug(`sending ACK for ${coapMsg.messageId.toString(16)}`);
+						debug(`sending ACK for message 0x${coapMsg.messageId.toString(16)}`);
 						const ACK = CoapClient.createMessage(
 							MessageType.ACK,
 							MessageCodes.empty,
@@ -660,7 +663,7 @@ export class CoapClient {
 						const connection = CoapClient.connections[originString];
 
 						// and send the reset
-						debug(`sending RST for ${coapMsg.messageId.toString(16)}`);
+						debug(`sending RST for message 0x${coapMsg.messageId.toString(16)}`);
 						const RST = CoapClient.createMessage(
 							MessageType.RST,
 							MessageCodes.empty,
@@ -713,7 +716,7 @@ export class CoapClient {
 
 		if (highPriority) {
 			// Send high-prio messages immediately
-			debug(`sending high priority message with ID 0x${message.messageId.toString(16)}`);
+			debug(`sending high priority message 0x${message.messageId.toString(16)}`);
 			// TODO: this can be refactored
 			if (request != null) {
 				request.concurrency = 1;
@@ -730,7 +733,7 @@ export class CoapClient {
 		if (request != null) {
 			// and continue working off the queue when it drops
 			request.on("concurrencyChanged", (req: PendingRequest) => {
-				debug(`request ${message.messageId.toString(16)}: concurrency changed => ${req.concurrency}`);
+				debug(`request 0x${message.messageId.toString(16)}: concurrency changed => ${req.concurrency}`);
 				if (request.concurrency === 0) CoapClient.workOffSendQueue();
 			});
 		}
@@ -751,7 +754,7 @@ export class CoapClient {
 		if (CoapClient.calculateConcurrency() < MAX_CONCURRENCY) {
 			// get the next message to send
 			const { connection, message } = CoapClient.sendQueue.shift();
-			debug(`concurrency low enough, sending message ${message.messageId.toString(16)}`);
+			debug(`concurrency low enough, sending message 0x${message.messageId.toString(16)}`);
 			// update the request's concurrency (it's now being handled)
 			const request = CoapClient.findRequest({ msgID: message.messageId });
 			if (request != null) {
@@ -799,7 +802,7 @@ export class CoapClient {
 		if (byUrl) {
 			CoapClient.pendingRequestsByUrl[request.url] = request;
 		}
-		debug(`remembering request: msgID=${request.originalMessage.messageId.toString(16)}, token=${tokenString}, url=${request.url}`);
+		debug(`remembering request: msgID=0x${request.originalMessage.messageId.toString(16)}, token=${tokenString}, url=${request.url}`);
 	}
 
 	/**
@@ -818,23 +821,27 @@ export class CoapClient {
 		}) {
 
 		// find the request
-		const request = CoapClient.findRequest(which);
+		const request = which.request || CoapClient.findRequest(which);
 
 		// none found, return
 		if (request == null) return;
 
-		debug(`forgetting request: token=${request.originalMessage.token.toString("hex")}; msgID=${request.originalMessage.messageId}`);
+		let tokenString: string = "";
+		if (request.originalMessage.token != null) {
+			tokenString = request.originalMessage.token.toString("hex");
+		}
+		const msgID = request.originalMessage.messageId;
+
+		debug(`forgetting request: token=${tokenString}; msgID=0x${msgID.toString(16)}`);
 
 		// stop retransmission if neccessary
 		CoapClient.stopRetransmission(request);
 
 		// delete all references
-		const tokenString = request.originalMessage.token.toString("hex");
 		if (CoapClient.pendingRequestsByToken.hasOwnProperty(tokenString)) {
 			delete CoapClient.pendingRequestsByToken[tokenString];
 		}
 
-		const msgID = request.originalMessage.messageId;
 		if (CoapClient.pendingRequestsByMsgID.hasOwnProperty(msgID)) {
 			delete CoapClient.pendingRequestsByMsgID[msgID];
 		}
