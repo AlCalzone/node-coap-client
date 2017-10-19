@@ -64,6 +64,9 @@ The target must be a string or url of the form `coap(s)://hostname:port` or an i
 
 ## Changelog
 
+#### 0.4.8 (2017-10-19)
+* (AlCalzone) Fixed retransmission
+
 #### 0.4.7 (2017-10-07)
 * (AlCalzone) Removed potential sources of infinite loops
 
