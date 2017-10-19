@@ -98,6 +98,12 @@ class PendingRequest extends EventEmitter implements IPendingRequest {
 	public get concurrency(): number {
 		return this._concurrency;
 	}
+
+	public queueForRetransmission(): void {
+		if (this.retransmit != null && typeof this.retransmit.action === "function") {
+			this.retransmit.jsTimeout = setTimeout(this.retransmit.action, this.retransmit.timeout);
+		}
+	}
 }
 
 interface QueuedMessage {
@@ -112,6 +118,7 @@ export interface SecurityParameters {
 
 interface RetransmissionInfo {
 	jsTimeout: any;
+	action: () => void;
 	timeout: number;
 	counter: number;
 }
@@ -172,7 +179,6 @@ export class CoapClient {
 	private static pendingRequestsByUrl: { [url: string]: PendingRequest } = {};
 	/** Queue of the messages waiting to be sent */
 	private static sendQueue: QueuedMessage[] = [];
-	private static sendQueueHighPrioCount: number = 0;
 	/** Number of message we expect an answer for */
 	private static concurrency: number = 0;
 
@@ -303,7 +309,8 @@ export class CoapClient {
 			const timeout = CoapClient.getRetransmissionInterval();
 			retransmit = {
 				timeout,
-				jsTimeout: setTimeout(() => CoapClient.retransmit(messageId), timeout),
+				action: () => CoapClient.retransmit(messageId),
+				jsTimeout: null,
 				counter: 0,
 			};
 		}
@@ -428,7 +435,7 @@ export class CoapClient {
 		debug(`retransmitting message ${msgID.toString(16)}, try #${request.retransmit.counter + 1}`);
 
 		// resend the message
-		CoapClient.send(request.connection, request.originalMessage);
+		CoapClient.send(request.connection, request.originalMessage, true);
 		// and increase the params
 		request.retransmit.counter++;
 		request.retransmit.timeout *= 2;
@@ -511,7 +518,8 @@ export class CoapClient {
 			const timeout = CoapClient.getRetransmissionInterval();
 			retransmit = {
 				timeout,
-				jsTimeout: setTimeout(() => CoapClient.retransmit(messageId), timeout),
+				action: () => CoapClient.retransmit(messageId),
+				jsTimeout: null,
 				counter: 0,
 			};
 		}
@@ -701,19 +709,24 @@ export class CoapClient {
 		highPriority: boolean = false,
 	): void {
 
-		// Put the message in the queue
+		const request = CoapClient.findRequest({msgID: message.messageId});
+
 		if (highPriority) {
-			// insert at the end of the high-priority queue
-			CoapClient.sendQueue.splice(CoapClient.sendQueueHighPrioCount, 0, {connection, message});
-			CoapClient.sendQueueHighPrioCount++;
+			// Send high-prio messages immediately
+			debug(`sending high priority message with ID 0x${message.messageId.toString(16)}`);
+			// TODO: this can be refactored
+			if (request != null) {
+				request.concurrency = 1;
+				request.queueForRetransmission();
+			}
+			connection.socket.send(message.serialize(), connection.origin);
 		} else {
-			// at the end
+			// Put the message in the queue
 			CoapClient.sendQueue.push({connection, message});
+			debug(`added message to send queue, new length = ${CoapClient.sendQueue.length}`);
 		}
-		debug(`added message to send queue, new length = ${CoapClient.sendQueue.length} (high prio: ${CoapClient.sendQueueHighPrioCount})`);
 
 		// if there's a request for this message, listen for concurrency changes
-		const request = CoapClient.findRequest({msgID: message.messageId});
 		if (request != null) {
 			// and continue working off the queue when it drops
 			request.on("concurrencyChanged", (req: PendingRequest) => {
@@ -741,9 +754,10 @@ export class CoapClient {
 			debug(`concurrency low enough, sending message ${message.messageId.toString(16)}`);
 			// update the request's concurrency (it's now being handled)
 			const request = CoapClient.findRequest({ msgID: message.messageId });
-			if (request != null) request.concurrency = 1;
-			// update the high priority count
-			if (CoapClient.sendQueueHighPrioCount > 0) CoapClient.sendQueueHighPrioCount--;
+			if (request != null) {
+				request.concurrency = 1;
+				request.queueForRetransmission();
+			}
 			// send the message
 			connection.socket.send(message.serialize(), connection.origin);
 		}
