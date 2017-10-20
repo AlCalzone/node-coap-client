@@ -441,7 +441,7 @@ export class CoapClient {
 		// and increase the params
 		request.retransmit.counter++;
 		request.retransmit.timeout *= 2;
-		request.retransmit.jsTimeout = setTimeout(() => CoapClient.retransmit(msgID), request.retransmit.timeout);
+		request.queueForRetransmission();
 	}
 	private static getRetransmissionInterval(): number {
 		return Math.round(1000 /*ms*/ * RETRANSMISSION_PARAMS.ackTimeout *
@@ -717,12 +717,7 @@ export class CoapClient {
 		if (highPriority) {
 			// Send high-prio messages immediately
 			debug(`sending high priority message 0x${message.messageId.toString(16)}`);
-			// TODO: this can be refactored
-			if (request != null) {
-				request.concurrency = 1;
-				request.queueForRetransmission();
-			}
-			connection.socket.send(message.serialize(), connection.origin);
+			CoapClient.doSend(connection, request, message);
 		} else {
 			// Put the message in the queue
 			CoapClient.sendQueue.push({connection, message});
@@ -757,16 +752,28 @@ export class CoapClient {
 			debug(`concurrency low enough, sending message 0x${message.messageId.toString(16)}`);
 			// update the request's concurrency (it's now being handled)
 			const request = CoapClient.findRequest({ msgID: message.messageId });
-			if (request != null) {
-				request.concurrency = 1;
-				request.queueForRetransmission();
-			}
-			// send the message
-			connection.socket.send(message.serialize(), connection.origin);
+			CoapClient.doSend(connection, request, message);
 		}
 
 		// to avoid any deadlocks we didn't think of, re-call this later
 		setTimeout(CoapClient.workOffSendQueue, 1000);
+	}
+
+	/**
+	 * Does the actual sending of a message and starts concurrency/retransmission handling
+	 */
+	private static doSend(
+		connection: ConnectionInfo,
+		request: PendingRequest,
+		message: Message,
+	): void {
+		// handle concurrency/retransmission if neccessary
+		if (request != null) {
+			request.concurrency = 1;
+			request.queueForRetransmission();
+		}
+		// send the message
+		connection.socket.send(message.serialize(), connection.origin);
 	}
 
 	/** Calculates the current concurrency, i.e. how many parallel requests are being handled */

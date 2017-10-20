@@ -104,6 +104,10 @@ export declare class CoapClient {
      */
     private static send(connection, message, highPriority?);
     private static workOffSendQueue();
+    /**
+     * Does the actual sending of a message and starts concurrency/retransmission handling
+     */
+    private static doSend(connection, request, message);
     /** Calculates the current concurrency, i.e. how many parallel requests are being handled */
     private static calculateConcurrency();
     /**
