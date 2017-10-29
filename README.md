@@ -49,8 +49,8 @@ coap
     .request(
         resource /* string */,
         method /* "get" | "post" | "put" | "delete" */,
-        [payload /* Buffer */,]
-        [options /* RequestOptions */]
+        [payload /* Buffer */,
+        [options /* RequestOptions */]]
     )
     .then(response => { /* handle response */})
     .catch(err => { /* handle error */ })
@@ -69,7 +69,7 @@ To customize the request behaviour, pass a `RequestOptions` object as the fourth
     retransmit: boolean;
 }
 ```
-In general, it should not be neccessary to set these, as the defaults provide a good, stable base for communication. 
+In general, it should not be necessary to set these, as the defaults provide a good, stable base for communication. 
 The `confirmable` option determines if a `CON` (confirmable) or a `NON` (non-confirmable) message will be sent. `CON` provokes a response from the other endpoint and is required for retransmission. `NON` is useful if you don't require reliable transmission, e.g. for repeatedly sending sensor data.
 The `retransmit` options determines if the CoAP client will try to retransmit confirmable messages that are not acknowledged by the remote endpoint. When the maximum number of retransmits is reached without success, the request promise will be rejected.
 
