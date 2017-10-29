@@ -4,37 +4,21 @@ Clientside implementation of the CoAP protocol with DTLS support
 *Requires NodeJS >= 6.x*
 
 ## Usage
-
-### Request a CoAP resource
 ```
 const coap = require("node-coap-client").CoapClient;
-
-coap
-	.request(
-		resource /* string */,
-		method /* "get" | "post" | "put" | "delete" */,
-		[payload /* Buffer */,]
-		[options /* RequestOptions */]
-	)
-	.then(response => { /* handle response */})
-	.catch(err => { /* handle error */ })
-	;
 ```
-The resource must be a valid CoAP resource URI, i.e. `coap(s)://hostname:port/path/path/path`.
+The CoAP client provides the following public methods:
 
-The RequestOptions object looks as follows, all properties are optional:
-```
-{
-	/** Whether to keep the socket connection alive. Speeds up subsequent requests */
-	keepAlive: boolean
-	/** Whether we expect a confirmation of the request */
-	confirmable: boolean
-	/** Whether we want to receive updates */
-	observe: boolean
-}
-```
+* `setSecurityParams` provides the security parameters for a hostname. This has to be called **before** any connection attempts are made.
+* `tryToConnect` allows checking if a given resource is available. This also establishes a connection if possible, so the following requests are sped up.
+* `request` fires off a one-time request to a given resource and returns the response.
+* `observe` subscribes to a resource to be notified on all updates.
+* `stopObserving` causes resource updates to no longer be sent.
+* `ping` is an inexpensive check if an endpoint is reachable or not.
+* `reset` closes pending and existing connections and forgets active requests. Useful to restore a connection after a connection loss.
 
-In order to access secured resources, you must set the security parameters before firing off the request:
+### `setSecurityParams` - Provide the security parameters for a hostname
+In order to access secured resources, you must set the security parameters before firing off a request:
 ```
 coap.setSecurityParams(hostname /* string */, params /* SecurityParameters */);
 ```
@@ -42,25 +26,118 @@ coap.setSecurityParams(hostname /* string */, params /* SecurityParameters */);
 The SecurityParameters object looks as follows, for now only PSK key exchanges are supported
 ```
 {
-	psk: { 
-		"identity": "key"
-		// ... potentially more psk identities
-	}
+    psk: { 
+        "identity": "key"
+        // ... potentially more psk identities
+    }
 }
 ```
-To talk to a Tr�dfri gateway, you need to use `Client_identity` as the identity.
+To talk to a Trådfri gateway, you need to use `Client_identity` as the identity.
 
-### Ping a CoAP origin
+### `tryToConnect` - Check if a given resource is available
 ```
 coap
-	.ping(
-		target /* string | url | Origin */,
-		[timeout /* number, time in ms */]
-	)
-	.then(success /* boolean */ => { /* handle response */})
-	;
+    .tryToConnect(target /* string */)
+    .then(success /* boolean */ => /* do something with the result */)
+    ;
 ```
+The promise resolves with `true` when the connection attempt was successful or `false` otherwise. On success, the connection is kept alive, so subsequent requests are sped up.
+
+### `request` - Fire off a one-time request to a CoAP resource
+```
+coap
+    .request(
+        resource /* string */,
+        method /* "get" | "post" | "put" | "delete" */,
+        [payload /* Buffer */,]
+        [options /* RequestOptions */]
+    )
+    .then(response => { /* handle response */})
+    .catch(err => { /* handle error */ })
+    ;
+```
+The resource must be a valid CoAP resource URI, i.e. `coap(s)://hostname:port/path/path/path`.
+
+To customize the request behaviour, pass a `RequestOptions` object as the fourth parameter. In this case, you **have to** provide a payload or pass `null/undefined` as the third parameter. This object looks as follows, **all properties are optional** and default to `true`:
+```
+{
+    /** Whether to keep the socket connection alive. Speeds up subsequent requests */
+    keepAlive: boolean
+    /** Whether we expect a confirmation of the request */
+    confirmable: boolean
+    /** Whether this message will be retransmitted on loss */
+    retransmit: boolean;
+}
+```
+In general, it should not be neccessary to set these, as the defaults provide a good, stable base for communication.
+
+The `response` object looks as follows:
+```
+{
+    /* The code of this response. For a description see https://tools.ietf.org/html/rfc7252#section-12.1.2 */
+    code: MessageCode;
+    /* The format of the response, as defined in https://tools.ietf.org/html/rfc7252#section-12.3 */
+    format: number;
+    /* The body of the response. Is only set if the response is non-empty */
+    payload: Buffer;
+}
+```
+
+The response code is of the type `MessageCode` which has the following properties and methods:
+* `major` / `minor`: Return the major and minor part of the message code. For the `Unsupported Content-Format` code, this would be 4 and 15 respectively.
+* `value`: Return the raw value as sent in the message header.
+* `isEmpty()`: Returns true if this message code represents an empty message
+* `isRequest()`: Returns true if this message code represents a request
+* `isResponse()`: Returns true if this message code represents a response
+* `toString()`: Returns the string representation (e.g. `"2.05"`) as defined in the spec.
+
+### `observe` - Subscribe to a CoAP resource and get notified on all updates
+```
+coap
+    .observe(
+        resource /* string */,
+        method /* "get" | "post" | "put" | "delete" */,
+        callback /* function */,
+        [payload /* Buffer */,]
+        [options /* RequestOptions */]
+    )
+    .then(() => { /* observing was successfully set up */})
+    .catch(err => { /* handle error */ })
+    ;
+```
+See `request` for a description of most parameters. The `observe` method expects a callback function as the third parameter, which is called on the initial response and all updates to the resource. The callback gets passed a `response` object as the only parameter.
+
+### `stopObserving` - Remove subscription to a CoAP resource
+```
+coap.stopObserving(resource /* string */)
+```
+You have to pass the same resource url you used to start observing earlier. After calling this, the observe callback is no longer invoked.
+
+### `ping` - Ping a CoAP origin
+```
+coap
+    .ping(
+        target /* string | url | Origin */,
+        [timeout /* number, time in ms */]
+    )
+    .then(success /* boolean */ => { /* handle response */})
+    ;
+```
+Prefer this over custom ping constructs with full-blown requests! The `ping` method uses inexpensive CoAP pings to check the availability of an endpoint and automatically handles success/failure for you.
+
 The target must be a string or url of the form `coap(s)://hostname:port` or an instance of the `Origin` class. The optional timeout (default 5000ms) determines when a ping is deemed as failed.
+
+### `reset` - Invalidate all connection states
+```
+coap.reset(
+    [originOrHostname /* string | Origin */]
+);
+```
+After a connection loss or reboot of another endpoint, the currently active connection params might no longer be valid. In this case, use the `reset` method to invalidate the stored connection params, so the next request will use a fresh connection.
+
+This causes all pending connections and requests to be dropped and clears all observations. 
+
+To only reset connections and requests for a specific hostname, pass the hostname or origin as the optional parameter.
 
 ## Changelog
 
