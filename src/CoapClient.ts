@@ -165,18 +165,16 @@ function findOptions(opts: Option[], name: string): Option[] {
  * provides methods to access CoAP server resources
  */
 export class CoapClient {
-
-	/** Table of all open connections and their parameters, sorted by the origin "coap(s)://host:port" */
-	private static connections: { [origin: string]: ConnectionInfo } = {};
-	/** Queue of the connections waiting to be established */
-	private static pendingConnections: { [origin: string]: DeferredPromise<ConnectionInfo> } = {};
+	private static connections = new Map</* origin: */ string, ConnectionInfo>();
+	/** Queue of the connections waiting to be established, sorted by the origin */
+	private static pendingConnections = new Map</* origin: */ string, DeferredPromise<ConnectionInfo>>();
 	private static isConnecting: boolean = false;
 	/** Table of all known security params, sorted by the hostname */
-	private static dtlsParams: { [hostname: string]: SecurityParameters } = {};
+	private static dtlsParams = new Map</* hostname: */ string, SecurityParameters>();
 	/** All pending requests, sorted by the token */
-	private static pendingRequestsByToken: { [token: string]: PendingRequest } = {};
-	private static pendingRequestsByMsgID: { [msgId: number]: PendingRequest } = {};
-	private static pendingRequestsByUrl: { [url: string]: PendingRequest } = {};
+	private static pendingRequestsByToken = new Map</* token: */ string, PendingRequest>();
+	private static pendingRequestsByMsgID = new Map</* msgId: */ number, PendingRequest>();
+	private static pendingRequestsByUrl = new Map</* url: */ string, PendingRequest>();
 	/** Queue of the messages waiting to be sent */
 	private static sendQueue: QueuedMessage[] = [];
 	/** Number of message we expect an answer for */
@@ -186,7 +184,7 @@ export class CoapClient {
 	 * Sets the security params to be used for the given hostname
 	 */
 	public static setSecurityParams(hostname: string, params: SecurityParameters) {
-		CoapClient.dtlsParams[hostname] = params;
+		CoapClient.dtlsParams.set(hostname, params);
 	}
 
 	/**
@@ -212,9 +210,8 @@ export class CoapClient {
 		}
 
 		// forget all pending requests matching the predicate
-		for (const msgId of Object.keys(CoapClient.pendingRequestsByMsgID)) {
+		for (const request of CoapClient.pendingRequestsByMsgID.values()) {
 			// check if the request matches the predicate
-			const request: PendingRequest = CoapClient.pendingRequestsByMsgID[msgId];
 			const originString = Origin.parse(request.url).toString();
 			if (!predicate(originString)) continue;
 
@@ -225,23 +222,23 @@ export class CoapClient {
 		debug(`${Object.keys(CoapClient.pendingRequestsByMsgID).length} pending requests remaining...`);
 
 		// cancel all pending connections matching the predicate
-		for (const originString of Object.keys(CoapClient.pendingConnections)) {
+		for (const [originString, connection] of CoapClient.pendingConnections) {
 			if (!predicate(originString)) continue;
 
-			CoapClient.pendingConnections[originString].reject("CoapClient was reset");
-			delete CoapClient.pendingConnections[originString];
+			connection.reject("CoapClient was reset");
+			CoapClient.pendingConnections.delete(originString);
 		}
 		debug(`${Object.keys(CoapClient.pendingConnections).length} pending connections remaining...`);
 
 		// forget all connections matching the predicate
-		for (const originString of Object.keys(CoapClient.connections)) {
+		for (const [originString, connection] of CoapClient.connections) {
 			if (!predicate(originString)) continue;
 
 			debug(`closing connection to ${originString}`);
-			if (CoapClient.connections[originString].socket) {
-				CoapClient.connections[originString].socket.close();
+			if (connection.socket != null) {
+				connection.socket.close();
 			}
-			delete CoapClient.connections[originString];
+			CoapClient.connections.delete(originString);
 		}
 		debug(`${Object.keys(CoapClient.connections).length} active connections remaining...`);
 	}
@@ -659,8 +656,8 @@ export class CoapClient {
 
 					// try to find the connection that belongs to this origin
 					const originString = origin.toString();
-					if (CoapClient.connections.hasOwnProperty(originString)) {
-						const connection = CoapClient.connections[originString];
+					if (CoapClient.connections.has(originString)) {
+						const connection = CoapClient.connections.get(originString);
 
 						// and send the reset
 						debug(`sending RST for message 0x${coapMsg.messageId.toString(16)}`);
@@ -778,8 +775,7 @@ export class CoapClient {
 
 	/** Calculates the current concurrency, i.e. how many parallel requests are being handled */
 	private static calculateConcurrency(): number {
-		return Object.keys(CoapClient.pendingRequestsByMsgID)		// find all requests
-			.map(msgid => CoapClient.pendingRequestsByMsgID[msgid])
+		return [...CoapClient.pendingRequestsByMsgID.values()]		// find all requests
 			.map(req => req.concurrency)							// extract their concurrency
 			.reduce((sum, item) => sum + item, 0)					// and sum it up
 			;
@@ -801,13 +797,13 @@ export class CoapClient {
 		let tokenString: string = "";
 		if (byToken && request.originalMessage.token != null) {
 			tokenString = request.originalMessage.token.toString("hex");
-			CoapClient.pendingRequestsByToken[tokenString] = request;
+			CoapClient.pendingRequestsByToken.set(tokenString, request);
 		}
 		if (byMsgID) {
-			CoapClient.pendingRequestsByMsgID[request.originalMessage.messageId] = request;
+			CoapClient.pendingRequestsByMsgID.set(request.originalMessage.messageId, request);
 		}
 		if (byUrl) {
-			CoapClient.pendingRequestsByUrl[request.url] = request;
+			CoapClient.pendingRequestsByUrl.set(request.url, request);
 		}
 		debug(`remembering request: msgID=0x${request.originalMessage.messageId.toString(16)}, token=${tokenString}, url=${request.url}`);
 	}
@@ -845,16 +841,16 @@ export class CoapClient {
 		CoapClient.stopRetransmission(request);
 
 		// delete all references
-		if (CoapClient.pendingRequestsByToken.hasOwnProperty(tokenString)) {
-			delete CoapClient.pendingRequestsByToken[tokenString];
+		if (CoapClient.pendingRequestsByToken.has(tokenString)) {
+			CoapClient.pendingRequestsByToken.delete(tokenString);
 		}
 
-		if (CoapClient.pendingRequestsByMsgID.hasOwnProperty(msgID)) {
-			delete CoapClient.pendingRequestsByMsgID[msgID];
+		if (CoapClient.pendingRequestsByMsgID.has(msgID)) {
+			CoapClient.pendingRequestsByMsgID.delete(msgID);
 		}
 
-		if (CoapClient.pendingRequestsByUrl.hasOwnProperty(request.url)) {
-			delete CoapClient.pendingRequestsByUrl[request.url];
+		if (CoapClient.pendingRequestsByUrl.has(request.url)) {
+			CoapClient.pendingRequestsByUrl.delete(request.url);
 		}
 
 		// Set concurrency to 0, so the send queue can continue
@@ -888,16 +884,16 @@ export class CoapClient {
 	): PendingRequest {
 
 		if (which.url != null) {
-			if (CoapClient.pendingRequestsByUrl.hasOwnProperty(which.url)) {
-				return CoapClient.pendingRequestsByUrl[which.url];
+			if (CoapClient.pendingRequestsByUrl.has(which.url)) {
+				return CoapClient.pendingRequestsByUrl.get(which.url);
 			}
 		} else if (which.msgID != null) {
-			if (CoapClient.pendingRequestsByMsgID.hasOwnProperty(which.msgID)) {
-				return CoapClient.pendingRequestsByMsgID[which.msgID];
+			if (CoapClient.pendingRequestsByMsgID.has(which.msgID)) {
+				return CoapClient.pendingRequestsByMsgID.get(which.msgID);
 			}
 		} else if (which.token != null) {
-			if (CoapClient.pendingRequestsByToken.hasOwnProperty(which.token)) {
-				return CoapClient.pendingRequestsByToken[which.token];
+			if (CoapClient.pendingRequestsByToken.has(which.token)) {
+				return CoapClient.pendingRequestsByToken.get(which.token);
 			}
 		}
 
@@ -909,9 +905,7 @@ export class CoapClient {
 	 */
 	private static findRequestsByOrigin(origin: Origin): PendingRequest[] {
 		const originString = origin.toString();
-		return Object
-			.keys(CoapClient.pendingRequestsByMsgID)
-			.map(msgID => CoapClient.pendingRequestsByMsgID[msgID])
+		return [...CoapClient.pendingRequestsByMsgID.values()]
 			.filter((req: PendingRequest) => Origin.parse(req.url).toString() === originString)
 			;
 	}
@@ -944,19 +938,19 @@ export class CoapClient {
 	 */
 	private static getConnection(origin: Origin): Promise<ConnectionInfo> {
 		const originString = origin.toString();
-		if (CoapClient.connections.hasOwnProperty(originString)) {
+		if (CoapClient.connections.has(originString)) {
 			debug(`getConnection(${originString}) => found existing connection`);
 			// return existing connection
-			return Promise.resolve(CoapClient.connections[originString]);
-		} else if (CoapClient.pendingConnections.hasOwnProperty(originString)) {
+			return Promise.resolve(CoapClient.connections.get(originString));
+		} else if (CoapClient.pendingConnections.has(originString)) {
 			debug(`getConnection(${originString}) => connection is pending`);
-			// return the pending connection
-			return CoapClient.pendingConnections[originString];
+			// return the pending connection promise
+			return CoapClient.pendingConnections.get(originString);
 		} else {
 			debug(`getConnection(${originString}) => establishing new connection`);
 			// create a promise and start the connection queue
 			const ret = createDeferredPromise<ConnectionInfo>();
-			CoapClient.pendingConnections[originString] = ret;
+			CoapClient.pendingConnections.set(originString, ret);
 			setTimeout(CoapClient.workOffPendingConnections, 0);
 			return ret;
 		}
@@ -964,7 +958,7 @@ export class CoapClient {
 
 	private static async workOffPendingConnections(): Promise<void> {
 
-		if (Object.keys(CoapClient.pendingConnections).length === 0) {
+		if (CoapClient.pendingConnections.size === 0) {
 			// no more pending connections, we're done
 			CoapClient.isConnecting = false;
 			return;
@@ -975,10 +969,10 @@ export class CoapClient {
 		CoapClient.isConnecting = true;
 
 		// Get the connection to establish
-		const originString = Object.keys(CoapClient.pendingConnections)[0];
+		const originString = CoapClient.pendingConnections.keys()[0] as string;
 		const origin = Origin.parse(originString);
-		const promise = CoapClient.pendingConnections[originString];
-		delete CoapClient.pendingConnections[originString];
+		const promise = CoapClient.pendingConnections.get(originString);
+		CoapClient.pendingConnections.delete(originString);
 
 		// Try a few times to setup a working connection
 		const maxTries = 3;
@@ -1000,12 +994,13 @@ export class CoapClient {
 			// add the event handler
 			socket.on("message", CoapClient.onMessage.bind(CoapClient, originString));
 			// initialize the connection params and remember them
-			const ret = CoapClient.connections[originString] = {
+			const ret = {
 				origin,
 				socket,
 				lastMsgId: 0,
 				lastToken: crypto.randomBytes(TOKEN_LENGTH),
 			};
+			CoapClient.connections.set(originString, ret);
 			// and resolve the deferred promise
 			promise.resolve(ret);
 		}
@@ -1029,7 +1024,7 @@ export class CoapClient {
 				// return a promise we resolve as soon as the connection is secured
 				const ret = createDeferredPromise<SocketWrapper>();
 				// try to find security parameters
-				if (!CoapClient.dtlsParams.hasOwnProperty(origin.hostname)) {
+				if (!CoapClient.dtlsParams.has(origin.hostname)) {
 					return Promise.reject(`No security parameters given for the resource at ${origin.toString()}`);
 				}
 				const dtlsOpts: dtls.Options = Object.assign(
@@ -1038,7 +1033,7 @@ export class CoapClient {
 						address: origin.hostname,
 						port: origin.port,
 					} as dtls.Options),
-					CoapClient.dtlsParams[origin.hostname],
+					CoapClient.dtlsParams.get(origin.hostname),
 				);
 				// try connecting
 				const onConnection = () => {

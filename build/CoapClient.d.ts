@@ -27,9 +27,8 @@ export interface SecurityParameters {
  * provides methods to access CoAP server resources
  */
 export declare class CoapClient {
-    /** Table of all open connections and their parameters, sorted by the origin "coap(s)://host:port" */
     private static connections;
-    /** Queue of the connections waiting to be established */
+    /** Queue of the connections waiting to be established, sorted by the origin */
     private static pendingConnections;
     private static isConnecting;
     /** Table of all known security params, sorted by the hostname */
