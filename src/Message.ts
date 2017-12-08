@@ -58,6 +58,7 @@ export const MessageCodes = Object.freeze({
 		valid: new MessageCode(2, 3),
 		changed: new MessageCode(2, 4),
 		content: new MessageCode(2, 5),
+		continue: new MessageCode(2, 31),
 	},
 
 	clientError: {
@@ -69,6 +70,7 @@ export const MessageCodes = Object.freeze({
 		notFound: new MessageCode(4, 4),
 		methodNotAllowed: new MessageCode(4, 5),
 		notAcceptable: new MessageCode(4, 6),
+		requestEntityIncomplete: new MessageCode(4, 8),
 		preconditionFailed: new MessageCode(4, 12),
 		requestEntityTooLarge: new MessageCode(4, 13),
 		unsupportedContentFormat: new MessageCode(4, 15),
