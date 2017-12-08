@@ -83,4 +83,8 @@ export declare class Message {
      * serializes this message into a buffer
      */
     serialize(): Buffer;
+    /**
+     * Checks if this message is part of a blockwise transfer
+     */
+    isPartialMessage(): boolean;
 }

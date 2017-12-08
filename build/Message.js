@@ -167,6 +167,19 @@ class Message {
         }
         return ret;
     }
+    /**
+     * Checks if this message is part of a blockwise transfer
+     */
+    isPartialMessage() {
+        // TODO: can we put the codes in an enum?
+        const block1option = this.options.find(o => o.code === 27 /* Block1 */);
+        const block2option = this.options.find(o => o.code === 23 /* Block2 */);
+        if (this.code.isRequest() && block1option != null)
+            return true;
+        if (this.code.isResponse() && block2option != null)
+            return true;
+        return false;
+    }
 }
 exports.Message = Message;
 /*
