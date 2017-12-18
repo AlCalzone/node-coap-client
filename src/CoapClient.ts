@@ -179,8 +179,6 @@ export class CoapClient {
 	private static pendingRequestsByUrl: { [url: string]: PendingRequest } = {};
 	/** Queue of the messages waiting to be sent */
 	private static sendQueue: QueuedMessage[] = [];
-	/** Number of message we expect an answer for */
-	private static concurrency: number = 0;
 
 	/**
 	 * Sets the security params to be used for the given hostname
@@ -273,7 +271,6 @@ export class CoapClient {
 
 		// retrieve or create the connection we're going to use
 		const origin = Origin.fromUrl(url);
-		const originString = origin.toString();
 		const connection = await CoapClient.getConnection(origin);
 
 		// find all the message parameters
@@ -281,7 +278,6 @@ export class CoapClient {
 		const code = MessageCodes.request[method];
 		const messageId = connection.lastMsgId = incrementMessageID(connection.lastMsgId);
 		const token = connection.lastToken = incrementToken(connection.lastToken);
-		const tokenString = token.toString("hex");
 		payload = payload || Buffer.from([]);
 
 		// create message options, be careful to order them by code, no sorting is implemented yet
@@ -482,7 +478,6 @@ export class CoapClient {
 
 		// retrieve or create the connection we're going to use
 		const origin = Origin.fromUrl(url);
-		const originString = origin.toString();
 		const connection = await CoapClient.getConnection(origin);
 
 		// find all the message parameters
@@ -490,7 +485,6 @@ export class CoapClient {
 		const code = MessageCodes.request[method];
 		const messageId = connection.lastMsgId = incrementMessageID(connection.lastMsgId);
 		const token = connection.lastToken = incrementToken(connection.lastToken);
-		const tokenString = token.toString("hex");
 		payload = payload || Buffer.from([]);
 
 		// create message options, be careful to order them by code, no sorting is implemented yet
@@ -508,8 +502,8 @@ export class CoapClient {
 		// [12] content format
 		msgOptions.push(Options.ContentFormat(ContentFormats.application_json));
 
-		// create the promise we're going to return
-		const response = createDeferredPromise<CoapResponse>();
+		// In contrast to requests, we don't work with a deferred promise when observing
+		// Instead, we invoke a callback for *every* response.
 
 		// create the message we're going to send
 		const message = CoapClient.createMessage(type, code, messageId, token, msgOptions, payload);
@@ -929,7 +923,6 @@ export class CoapClient {
 		}
 
 		// retrieve or create the connection we're going to use
-		const originString = target.toString();
 		try {
 			await CoapClient.getConnection(target);
 			return true;

@@ -184,14 +184,12 @@ class CoapClient {
                 options.retransmit = true;
             // retrieve or create the connection we're going to use
             const origin = Origin_1.Origin.fromUrl(url);
-            const originString = origin.toString();
             const connection = yield CoapClient.getConnection(origin);
             // find all the message parameters
             const type = options.confirmable ? Message_1.MessageType.CON : Message_1.MessageType.NON;
             const code = Message_1.MessageCodes.request[method];
             const messageId = connection.lastMsgId = incrementMessageID(connection.lastMsgId);
             const token = connection.lastToken = incrementToken(connection.lastToken);
-            const tokenString = token.toString("hex");
             payload = payload || Buffer.from([]);
             // create message options, be careful to order them by code, no sorting is implemented yet
             const msgOptions = [];
@@ -368,14 +366,12 @@ class CoapClient {
                 options.retransmit = true;
             // retrieve or create the connection we're going to use
             const origin = Origin_1.Origin.fromUrl(url);
-            const originString = origin.toString();
             const connection = yield CoapClient.getConnection(origin);
             // find all the message parameters
             const type = options.confirmable ? Message_1.MessageType.CON : Message_1.MessageType.NON;
             const code = Message_1.MessageCodes.request[method];
             const messageId = connection.lastMsgId = incrementMessageID(connection.lastMsgId);
             const token = connection.lastToken = incrementToken(connection.lastToken);
-            const tokenString = token.toString("hex");
             payload = payload || Buffer.from([]);
             // create message options, be careful to order them by code, no sorting is implemented yet
             const msgOptions = [];
@@ -393,8 +389,8 @@ class CoapClient {
             msgOptions.push(...pathParts.map(part => Option_1.Options.UriPath(part)));
             // [12] content format
             msgOptions.push(Option_1.Options.ContentFormat(ContentFormats_1.ContentFormats.application_json));
-            // create the promise we're going to return
-            const response = DeferredPromise_1.createDeferredPromise();
+            // In contrast to requests, we don't work with a deferred promise when observing
+            // Instead, we invoke a callback for *every* response.
             // create the message we're going to send
             const message = CoapClient.createMessage(type, code, messageId, token, msgOptions, payload);
             // create the retransmission info
@@ -733,7 +729,6 @@ class CoapClient {
                 target = Origin_1.Origin.fromUrl(target);
             }
             // retrieve or create the connection we're going to use
-            const originString = target.toString();
             try {
                 yield CoapClient.getConnection(target);
                 return true;
@@ -876,6 +871,4 @@ CoapClient.pendingRequestsByMsgID = {};
 CoapClient.pendingRequestsByUrl = {};
 /** Queue of the messages waiting to be sent */
 CoapClient.sendQueue = [];
-/** Number of message we expect an answer for */
-CoapClient.concurrency = 0;
 exports.CoapClient = CoapClient;

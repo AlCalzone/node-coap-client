@@ -1,5 +1,4 @@
 import { Option } from "./Option";
-import { fail } from "assert";
 
 export enum MessageType {
 	CON = 0, // Confirmable
