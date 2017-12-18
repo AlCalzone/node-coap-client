@@ -209,6 +209,72 @@ export class NumericOption extends Option {
 }
 
 /**
+ * Specialized Message optionis for blockwise transfer
+ */
+export class BlockOption extends NumericOption {
+
+	/**
+	 * The size exponent of this block in the range 0..6
+	 * The actual block size is calculated by 2**(4 + exp)
+	 */
+	public get sizeExponent(): number {
+		return this.value & 0b111;
+	}
+	public set sizeExponent(value: number) {
+		if (value < 0 || value > 6) {
+			throw new Error("the size exponent must be in the range of 0..6");
+		}
+		// overwrite the last 3 bits
+		this.value = (this.value & ~0b111) | value;
+	}
+	/**
+	 * The size of this block in bytes
+	 */
+	public get blockSize(): number {
+		return 1 << (this.sizeExponent + 4);
+	}
+
+	/**
+	 * Indicates if there are more blocks following after this one.
+	 */
+	public get isLastBlock(): boolean {
+		const moreBlocks = (this.value & 0b1000) === 0b1000;
+		return !moreBlocks;
+	}
+	public set isLastBlock(value: boolean) {
+		const moreBlocks = !value;
+		// overwrite the 4th bit
+		this.value = (this.value & ~0b1000) | (moreBlocks ? 0b1000 : 0);
+	}
+
+	/**
+	 * The sequence number of this block.
+	 * When present in a request message, this determines the number of the block being requested
+	 * When present in a response message, this indicates the number of the provided block
+	 */
+	public get blockNumber(): number {
+		return this.value >>> 4;
+	}
+	public set blockNumber(value: number) {
+		// TODO: check if we need to update the value length
+		this.value = (value << 4) | (this.value & 0b1111);
+	}
+
+	/**
+	 * Returns the position of the first byte of this block in the complete message
+	 */
+	public get byteOffset(): number {
+		// from the spec:
+		// Implementation note:  As an implementation convenience, "(val & ~0xF)
+		// << (val & 7)", i.e., the option value with the last 4 bits masked
+		// out, shifted to the left by the value of SZX, gives the byte
+		// position of the first byte of the block being transferred.
+		return (this.value & ~0b1111) << (this.value & 0b111);
+	}
+
+}
+
+/**
  * Specialized Message options for binary (and empty) content.
  */
 export class BinaryOption extends Option {
@@ -312,8 +378,8 @@ defineOptionConstructor(NumericOption, 7, "Uri-Port", false, 2);
 defineOptionConstructor(NumericOption, 12, "Content-Format", false, 2);
 defineOptionConstructor(NumericOption, 14, "Max-Age", false, 4);
 defineOptionConstructor(NumericOption, 17, "Accept", false, 2);
-defineOptionConstructor(NumericOption, 23, "Block2", false, 3);
-defineOptionConstructor(NumericOption, 27, "Block1", false, 3);
+defineOptionConstructor(BlockOption, 23, "Block2", false, 3);
+defineOptionConstructor(BlockOption, 27, "Block1", false, 3);
 defineOptionConstructor(NumericOption, 28, "Size2", false, 4);
 defineOptionConstructor(NumericOption, 60, "Size1", false, 4);
 defineOptionConstructor(BinaryOption, 1, "If-Match", true, 0, 8);

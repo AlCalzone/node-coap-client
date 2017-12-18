@@ -38,6 +38,34 @@ export declare class NumericOption extends Option {
     static create(code: number, name: string, repeatable: boolean, maxLength: number, rawValue: Buffer): NumericOption;
 }
 /**
+ * Specialized Message optionis for blockwise transfer
+ */
+export declare class BlockOption extends NumericOption {
+    /**
+     * The size exponent of this block in the range 0..6
+     * The actual block size is calculated by 2**(4 + exp)
+     */
+    sizeExponent: number;
+    /**
+     * The size of this block in bytes
+     */
+    readonly blockSize: number;
+    /**
+     * Indicates if there are more blocks following after this one.
+     */
+    isLastBlock: boolean;
+    /**
+     * The sequence number of this block.
+     * When present in a request message, this determines the number of the block being requested
+     * When present in a response message, this indicates the number of the provided block
+     */
+    blockNumber: number;
+    /**
+     * Returns the position of the first byte of this block in the complete message
+     */
+    readonly byteOffset: number;
+}
+/**
  * Specialized Message options for binary (and empty) content.
  */
 export declare class BinaryOption extends Option {
