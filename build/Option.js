@@ -175,12 +175,18 @@ class NumericOption extends Option {
     static create(code, name, repeatable, maxLength, rawValue) {
         return new NumericOption(code, name, repeatable, maxLength, rawValue);
     }
+    toString() {
+        return `${this.name} (${this.code}): ${this.value}`;
+    }
 }
 exports.NumericOption = NumericOption;
 /**
  * Specialized Message optionis for blockwise transfer
  */
 class BlockOption extends NumericOption {
+    static create(code, name, repeatable, maxLength, rawValue) {
+        return new BlockOption(code, name, repeatable, maxLength, rawValue);
+    }
     /**
      * The size exponent of this block in the range 0..6
      * The actual block size is calculated by 2**(4 + exp)
@@ -236,6 +242,9 @@ class BlockOption extends NumericOption {
         // position of the first byte of the block being transferred.
         return (this.value & ~0b1111) << (this.value & 0b111);
     }
+    toString() {
+        return `${this.name} (${this.code}): ${this.blockNumber}/${this.isLastBlock ? 0 : 1}/${this.blockSize}`;
+    }
 }
 exports.BlockOption = BlockOption;
 /**
@@ -267,6 +276,9 @@ class BinaryOption extends Option {
     static create(code, name, repeatable, minLength, maxLength, rawValue) {
         return new BinaryOption(code, name, repeatable, minLength, maxLength, rawValue);
     }
+    toString() {
+        return `${this.name} (${this.code}): 0x${this.rawValue.toString("hex")}`;
+    }
 }
 exports.BinaryOption = BinaryOption;
 /**
@@ -297,6 +309,9 @@ class StringOption extends Option {
     }
     static create(code, name, repeatable, minLength, maxLength, rawValue) {
         return new StringOption(code, name, repeatable, minLength, maxLength, rawValue);
+    }
+    toString() {
+        return `${this.name} (${this.code}): "${this.value}"`;
     }
 }
 exports.StringOption = StringOption;

@@ -206,12 +206,26 @@ export class NumericOption extends Option {
 		return new NumericOption(code, name, repeatable, maxLength, rawValue);
 	}
 
+	public toString(): string {
+		return `${this.name} (${this.code}): ${this.value}`;
+	}
+
 }
 
 /**
  * Specialized Message optionis for blockwise transfer
  */
 export class BlockOption extends NumericOption {
+
+	public static create(
+		code: number,
+		name: string,
+		repeatable: boolean,
+		maxLength: number,
+		rawValue: Buffer,
+	): BlockOption {
+		return new BlockOption(code, name, repeatable, maxLength, rawValue);
+	}
 
 	/**
 	 * The size exponent of this block in the range 0..6
@@ -272,6 +286,10 @@ export class BlockOption extends NumericOption {
 		return (this.value & ~0b1111) << (this.value & 0b111);
 	}
 
+	public toString(): string {
+		return `${this.name} (${this.code}): ${this.blockNumber}/${this.isLastBlock ? 0 : 1}/${this.blockSize}`;
+	}
+
 }
 
 /**
@@ -315,6 +333,10 @@ export class BinaryOption extends Option {
 		return new BinaryOption(code, name, repeatable, minLength, maxLength, rawValue);
 	}
 
+	public toString(): string {
+		return `${this.name} (${this.code}): 0x${this.rawValue.toString("hex")}`;
+	}
+
 }
 
 /**
@@ -356,6 +378,10 @@ export class StringOption extends Option {
 		rawValue: Buffer,
 	): StringOption {
 		return new StringOption(code, name, repeatable, minLength, maxLength, rawValue);
+	}
+
+	public toString(): string {
+		return `${this.name} (${this.code}): "${this.value}"`;
 	}
 
 }

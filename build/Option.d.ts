@@ -36,11 +36,13 @@ export declare class NumericOption extends Option {
     constructor(code: number, name: string, repeatable: boolean, maxLength: number, rawValue: Buffer);
     value: number;
     static create(code: number, name: string, repeatable: boolean, maxLength: number, rawValue: Buffer): NumericOption;
+    toString(): string;
 }
 /**
  * Specialized Message optionis for blockwise transfer
  */
 export declare class BlockOption extends NumericOption {
+    static create(code: number, name: string, repeatable: boolean, maxLength: number, rawValue: Buffer): BlockOption;
     /**
      * The size exponent of this block in the range 0..6
      * The actual block size is calculated by 2**(4 + exp)
@@ -64,6 +66,7 @@ export declare class BlockOption extends NumericOption {
      * Returns the position of the first byte of this block in the complete message
      */
     readonly byteOffset: number;
+    toString(): string;
 }
 /**
  * Specialized Message options for binary (and empty) content.
@@ -76,6 +79,7 @@ export declare class BinaryOption extends Option {
     constructor(code: number, name: string, repeatable: boolean, minLength: number, maxLength: number, rawValue: Buffer);
     value: Buffer;
     static create(code: number, name: string, repeatable: boolean, minLength: number, maxLength: number, rawValue: Buffer): BinaryOption;
+    toString(): string;
 }
 /**
  * Specialized Message options for string content.
@@ -88,6 +92,7 @@ export declare class StringOption extends Option {
     constructor(code: number, name: string, repeatable: boolean, minLength: number, maxLength: number, rawValue: Buffer);
     value: string;
     static create(code: number, name: string, repeatable: boolean, minLength: number, maxLength: number, rawValue: Buffer): StringOption;
+    toString(): string;
 }
 export declare const Options: Readonly<{
     UriHost: (hostname: string) => Option;

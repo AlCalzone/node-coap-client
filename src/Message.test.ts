@@ -72,5 +72,18 @@ describe.only("blockwise tests =>", () => {
 
 	it("should parse without crashing", () => {
 		const msg = Message.parse(buf);
+		console.log(`code: ${msg.code}`);
+		console.log(`messageId: ${msg.messageId}`);
+		if (msg.token != null) {
+			console.log(`token: ${msg.token.toString("hex")}`);
+		}
+		console.log(`type: ${msg.type}`);
+		console.log(`version: ${msg.version}`);
+		console.log("options:");
+		for (const opt of msg.options) {
+			console.log(`  [${opt.constructor.name}] ${opt.toString()}`);
+		}
+		console.log("payload:");
+		console.log(msg.payload.toString("utf-8"));
 	});
 });
