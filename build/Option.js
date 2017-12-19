@@ -344,6 +344,7 @@ defineOptionConstructor(StringOption, 15, "Uri-Query", true, 0, 255);
 defineOptionConstructor(StringOption, 20, "Location-Query", true, 0, 255);
 defineOptionConstructor(StringOption, 35, "Proxy-Uri", true, 1, 1034);
 defineOptionConstructor(StringOption, 39, "Proxy-Scheme", true, 1, 255);
+// tslint:disable:no-string-literal
 // tslint:disable-next-line:variable-name
 exports.Options = Object.freeze({
     UriHost: (hostname) => optionConstructors["Uri-Host"](Buffer.from(hostname)),
@@ -351,6 +352,18 @@ exports.Options = Object.freeze({
     UriPath: (pathname) => optionConstructors["Uri-Path"](Buffer.from(pathname)),
     LocationPath: (pathname) => optionConstructors["Location-Path"](Buffer.from(pathname)),
     ContentFormat: (format) => optionConstructors["Content-Format"](numberToBuffer(format)),
-    // tslint:disable-next-line:no-string-literal
     Observe: (observe) => optionConstructors["Observe"](Buffer.from([observe ? 0 : 1])),
+    Block1: (num, isLast, size) => {
+        // Warning: we're not checking for a valid size here, do that in advance!
+        const sizeExp = Math.log2(size) - 4;
+        const value = (num << 4) | (isLast ? 0 : 0b1000) | (sizeExp & 0b111);
+        return optionConstructors["Block1"](numberToBuffer(value));
+    },
+    Block2: (num, isLast, size) => {
+        // Warning: we're not checking for a valid size here, do that in advance!
+        const sizeExp = Math.log2(size) - 4;
+        const value = (num << 4) | (isLast ? 0 : 0b1000) | (sizeExp & 0b111);
+        return optionConstructors["Block2"](numberToBuffer(value));
+    },
 });
+// tslint:enable:no-string-literal

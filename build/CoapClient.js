@@ -21,6 +21,7 @@ const Message_1 = require("./Message");
 const Option_1 = require("./Option");
 // initialize debugging
 const debugPackage = require("debug");
+const LogMessage_1 = require("./lib/LogMessage");
 const debug = debugPackage("node-coap-client");
 // print version info
 // tslint:disable-next-line:no-var-requires
@@ -95,6 +96,17 @@ function findOption(opts, name) {
 function findOptions(opts, name) {
     return opts.filter(opt => opt.name === name);
 }
+function validateBlockSize(size) {
+    // block size is represented as 2**(4 + X) where X is an integer from 0..6
+    const exp = Math.log2(size) - 4;
+    // is the exponent an integer?
+    if (exp % 1 !== 0)
+        return false;
+    // is the exponent in the range of 0..6?
+    if (exp < 0 || exp > 6)
+        return false;
+    return true;
+}
 /**
  * provides methods to access CoAP server resources
  */
@@ -104,6 +116,43 @@ class CoapClient {
      */
     static setSecurityParams(hostname, params) {
         CoapClient.dtlsParams[hostname] = params;
+    }
+    /**
+     * Sets the default options for requests
+     * @param defaults The default options to use for requests when no options are given
+     */
+    static setDefaultRequestOptions(defaults) {
+        if (defaults.confirmable != null)
+            this.defaultRequestOptions.confirmable = defaults.confirmable;
+        if (defaults.keepAlive != null)
+            this.defaultRequestOptions.keepAlive = defaults.keepAlive;
+        if (defaults.retransmit != null)
+            this.defaultRequestOptions.retransmit = defaults.retransmit;
+        if (defaults.preferredBlockSize != null) {
+            if (!validateBlockSize(defaults.preferredBlockSize)) {
+                throw new Error(`${defaults.preferredBlockSize} is not a valid block size. The value must be a power of 2 between 16 and 1024`);
+            }
+            this.defaultRequestOptions.preferredBlockSize = defaults.preferredBlockSize;
+        }
+    }
+    static getRequestOptions(options) {
+        // ensure we have options and set the default params
+        options = options || {};
+        if (options.confirmable == null)
+            options.confirmable = this.defaultRequestOptions.confirmable;
+        if (options.keepAlive == null)
+            options.keepAlive = this.defaultRequestOptions.keepAlive;
+        if (options.retransmit == null)
+            options.retransmit = this.defaultRequestOptions.retransmit;
+        if (options.preferredBlockSize == null) {
+            options.preferredBlockSize = this.defaultRequestOptions.preferredBlockSize;
+        }
+        else {
+            if (!validateBlockSize(options.preferredBlockSize)) {
+                throw new Error(`${options.preferredBlockSize} is not a valid block size. The value must be a power of 2 between 16 and 1024`);
+            }
+        }
+        return options;
     }
     /**
      * Closes and forgets about connections, useful if DTLS session is reset on remote end
@@ -175,13 +224,7 @@ class CoapClient {
                 url = nodeUrl.parse(url);
             }
             // ensure we have options and set the default params
-            options = options || {};
-            if (options.confirmable == null)
-                options.confirmable = true;
-            if (options.keepAlive == null)
-                options.keepAlive = true;
-            if (options.retransmit == null)
-                options.retransmit = true;
+            options = this.getRequestOptions(options);
             // retrieve or create the connection we're going to use
             const origin = Origin_1.Origin.fromUrl(url);
             const connection = yield CoapClient.getConnection(origin);
@@ -193,8 +236,6 @@ class CoapClient {
             payload = payload || Buffer.from([]);
             // create message options, be careful to order them by code, no sorting is implemented yet
             const msgOptions = [];
-            //// [6] observe or not?
-            // msgOptions.push(Options.Observe(options.observe))
             // [11] path of the request
             let pathname = url.pathname || "";
             while (pathname.startsWith("/")) {
@@ -207,6 +248,10 @@ class CoapClient {
             msgOptions.push(...pathParts.map(part => Option_1.Options.UriPath(part)));
             // [12] content format
             msgOptions.push(Option_1.Options.ContentFormat(ContentFormats_1.ContentFormats.application_json));
+            // [23] Block2 (preferred response block size)
+            if (options.preferredBlockSize != null) {
+                msgOptions.push(Option_1.Options.Block2(0, true, options.preferredBlockSize));
+            }
             // create the promise we're going to return
             const response = DeferredPromise_1.createDeferredPromise();
             // create the message we're going to send
@@ -357,13 +402,7 @@ class CoapClient {
                 url = nodeUrl.parse(url);
             }
             // ensure we have options and set the default params
-            options = options || {};
-            if (options.confirmable == null)
-                options.confirmable = true;
-            if (options.keepAlive == null)
-                options.keepAlive = true;
-            if (options.retransmit == null)
-                options.retransmit = true;
+            options = this.getRequestOptions(options);
             // retrieve or create the connection we're going to use
             const origin = Origin_1.Origin.fromUrl(url);
             const connection = yield CoapClient.getConnection(origin);
@@ -438,7 +477,7 @@ class CoapClient {
     static onMessage(origin, message, rinfo) {
         // parse the CoAP message
         const coapMsg = Message_1.Message.parse(message);
-        debug(`received message: ID=0x${coapMsg.messageId.toString(16)}${(coapMsg.token && coapMsg.token.length) ? (", token=" + coapMsg.token.toString("hex")) : ""}`);
+        LogMessage_1.logMessage(coapMsg);
         if (coapMsg.code.isEmpty()) {
             // ACK or RST
             // see if we have a request for this message id
@@ -474,7 +513,6 @@ class CoapClient {
             // ignore them
         }
         else if (coapMsg.code.isResponse()) {
-            debug(`response with payload: ${coapMsg.payload.toString("utf8")}`);
             // this is a response, find out what to do with it
             if (coapMsg.token && coapMsg.token.length) {
                 // this message has a token, check which request it belongs to
@@ -871,4 +909,11 @@ CoapClient.pendingRequestsByMsgID = {};
 CoapClient.pendingRequestsByUrl = {};
 /** Queue of the messages waiting to be sent */
 CoapClient.sendQueue = [];
+/** Default values for request options */
+CoapClient.defaultRequestOptions = {
+    confirmable: true,
+    keepAlive: true,
+    retransmit: true,
+    preferredBlockSize: null,
+};
 exports.CoapClient = CoapClient;

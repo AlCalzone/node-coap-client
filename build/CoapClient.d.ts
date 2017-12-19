@@ -12,6 +12,8 @@ export interface RequestOptions {
     confirmable?: boolean;
     /** Whether this message will be retransmitted on loss */
     retransmit?: boolean;
+    /** The preferred block size of partial responses */
+    preferredBlockSize?: number;
 }
 export interface CoapResponse {
     code: MessageCode;
@@ -40,10 +42,18 @@ export declare class CoapClient {
     private static pendingRequestsByUrl;
     /** Queue of the messages waiting to be sent */
     private static sendQueue;
+    /** Default values for request options */
+    private static defaultRequestOptions;
     /**
      * Sets the security params to be used for the given hostname
      */
     static setSecurityParams(hostname: string, params: SecurityParameters): void;
+    /**
+     * Sets the default options for requests
+     * @param defaults The default options to use for requests when no options are given
+     */
+    static setDefaultRequestOptions(defaults: RequestOptions): void;
+    private static getRequestOptions(options?);
     /**
      * Closes and forgets about connections, useful if DTLS session is reset on remote end
      * @param originOrHostname - Origin (protocol://hostname:port) or Hostname to reset,

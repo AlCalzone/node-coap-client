@@ -101,4 +101,6 @@ export declare const Options: Readonly<{
     LocationPath: (pathname: string) => Option;
     ContentFormat: (format: ContentFormats) => Option;
     Observe: (observe: boolean) => Option;
+    Block1: (num: number, isLast: boolean, size: number) => Option;
+    Block2: (num: number, isLast: boolean, size: number) => Option;
 }>;

@@ -12,6 +12,7 @@ import { BinaryOption, NumericOption, Option, Options, StringOption } from "./Op
 
 // initialize debugging
 import * as debugPackage from "debug";
+import { logMessage } from "./lib/LogMessage";
 const debug = debugPackage("node-coap-client");
 
 // print version info
@@ -29,6 +30,8 @@ export interface RequestOptions {
 	confirmable?: boolean;
 	/** Whether this message will be retransmitted on loss */
 	retransmit?: boolean;
+	/** The preferred block size of partial responses */
+	preferredBlockSize?: number;
 }
 
 export interface CoapResponse {
@@ -161,6 +164,16 @@ function findOptions(opts: Option[], name: string): Option[] {
 	return opts.filter(opt => opt.name === name);
 }
 
+function validateBlockSize(size: number): boolean {
+	// block size is represented as 2**(4 + X) where X is an integer from 0..6
+	const exp = Math.log2(size) - 4;
+	// is the exponent an integer?
+	if (exp % 1 !== 0) return false;
+	// is the exponent in the range of 0..6?
+	if (exp < 0 || exp > 6) return false;
+	return true;
+}
+
 /**
  * provides methods to access CoAP server resources
  */
@@ -179,12 +192,51 @@ export class CoapClient {
 	private static pendingRequestsByUrl: { [url: string]: PendingRequest } = {};
 	/** Queue of the messages waiting to be sent */
 	private static sendQueue: QueuedMessage[] = [];
+	/** Default values for request options */
+	private static defaultRequestOptions: RequestOptions = {
+		confirmable: true,
+		keepAlive: true,
+		retransmit: true,
+		preferredBlockSize: null,
+	};
 
 	/**
 	 * Sets the security params to be used for the given hostname
 	 */
 	public static setSecurityParams(hostname: string, params: SecurityParameters) {
 		CoapClient.dtlsParams[hostname] = params;
+	}
+
+	/**
+	 * Sets the default options for requests
+	 * @param defaults The default options to use for requests when no options are given
+	 */
+	public static setDefaultRequestOptions(defaults: RequestOptions): void {
+		if (defaults.confirmable != null) this.defaultRequestOptions.confirmable = defaults.confirmable;
+		if (defaults.keepAlive != null) this.defaultRequestOptions.keepAlive = defaults.keepAlive;
+		if (defaults.retransmit != null) this.defaultRequestOptions.retransmit = defaults.retransmit;
+		if (defaults.preferredBlockSize != null) {
+			if (!validateBlockSize(defaults.preferredBlockSize)) {
+				throw new Error(`${defaults.preferredBlockSize} is not a valid block size. The value must be a power of 2 between 16 and 1024`);
+			}
+			this.defaultRequestOptions.preferredBlockSize = defaults.preferredBlockSize;
+		}
+	}
+
+	private static getRequestOptions(options?: RequestOptions): RequestOptions {
+		// ensure we have options and set the default params
+		options = options || {};
+		if (options.confirmable == null) options.confirmable = this.defaultRequestOptions.confirmable;
+		if (options.keepAlive == null) options.keepAlive = this.defaultRequestOptions.keepAlive;
+		if (options.retransmit == null) options.retransmit = this.defaultRequestOptions.retransmit;
+		if (options.preferredBlockSize == null) {
+			options.preferredBlockSize = this.defaultRequestOptions.preferredBlockSize;
+		} else {
+			if (!validateBlockSize(options.preferredBlockSize)) {
+				throw new Error(`${options.preferredBlockSize} is not a valid block size. The value must be a power of 2 between 16 and 1024`);
+			}
+		}
+		return options;
 	}
 
 	/**
@@ -264,10 +316,7 @@ export class CoapClient {
 		}
 
 		// ensure we have options and set the default params
-		options = options || {};
-		if (options.confirmable == null) options.confirmable = true;
-		if (options.keepAlive == null) options.keepAlive = true;
-		if (options.retransmit == null) options.retransmit = true;
+		options = this.getRequestOptions(options);
 
 		// retrieve or create the connection we're going to use
 		const origin = Origin.fromUrl(url);
@@ -282,8 +331,6 @@ export class CoapClient {
 
 		// create message options, be careful to order them by code, no sorting is implemented yet
 		const msgOptions: Option[] = [];
-		//// [6] observe or not?
-		// msgOptions.push(Options.Observe(options.observe))
 		// [11] path of the request
 		let pathname = url.pathname || "";
 		while (pathname.startsWith("/")) { pathname = pathname.slice(1); }
@@ -294,6 +341,10 @@ export class CoapClient {
 		);
 		// [12] content format
 		msgOptions.push(Options.ContentFormat(ContentFormats.application_json));
+		// [23] Block2 (preferred response block size)
+		if (options.preferredBlockSize != null) {
+			msgOptions.push(Options.Block2(0, true, options.preferredBlockSize));
+		}
 
 		// create the promise we're going to return
 		const response = createDeferredPromise<CoapResponse>();
@@ -471,10 +522,7 @@ export class CoapClient {
 		}
 
 		// ensure we have options and set the default params
-		options = options || {};
-		if (options.confirmable == null) options.confirmable = true;
-		if (options.keepAlive == null) options.keepAlive = true;
-		if (options.retransmit == null) options.retransmit = true;
+		options = this.getRequestOptions(options);
 
 		// retrieve or create the connection we're going to use
 		const origin = Origin.fromUrl(url);
@@ -559,7 +607,7 @@ export class CoapClient {
 	private static onMessage(origin: string, message: Buffer, rinfo: dgram.RemoteInfo) {
 		// parse the CoAP message
 		const coapMsg = Message.parse(message);
-		debug(`received message: ID=0x${coapMsg.messageId.toString(16)}${(coapMsg.token && coapMsg.token.length) ? (", token=" + coapMsg.token.toString("hex")) : ""}`);
+		logMessage(coapMsg);
 
 		if (coapMsg.code.isEmpty()) {
 			// ACK or RST
@@ -596,7 +644,6 @@ export class CoapClient {
 			// we are a client implementation, we should not get requests
 			// ignore them
 		} else if (coapMsg.code.isResponse()) {
-			debug(`response with payload: ${coapMsg.payload.toString("utf8")}`);
 			// this is a response, find out what to do with it
 			if (coapMsg.token && coapMsg.token.length) {
 				// this message has a token, check which request it belongs to
