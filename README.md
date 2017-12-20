@@ -3,6 +3,8 @@ Clientside implementation of the CoAP protocol with DTLS support
 
 *Requires NodeJS >= 6.x*
 
+**Note:** If you want to talk to a Trådfri gateway, use https://github.com/AlCalzone/node-tradfri-client instead. That library builds on node-coap-client with some simplifying abstractions.
+
 ## Usage
 ```
 const coap = require("node-coap-client").CoapClient;
@@ -32,7 +34,7 @@ The SecurityParameters object looks as follows, for now only PSK key exchanges a
     }
 }
 ```
-To talk to a Trådfri gateway, you need to use `Client_identity` as the identity.
+To talk to a Trådfri gateway, you need to use `Client_identity` to generate a new DTLS identity and then use that one for further communication. Again, please use [node-tradfri-client](https://github.com/AlCalzone/node-tradfri-client) instead.
 
 ### `tryToConnect` - Check if a given resource is available
 ```
