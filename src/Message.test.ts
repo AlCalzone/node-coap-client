@@ -1,3 +1,4 @@
+// tslint:disable:no-console
 // tslint:disable:no-unused-expression
 import { expect } from "chai";
 

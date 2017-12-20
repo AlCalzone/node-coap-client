@@ -69,6 +69,11 @@ export declare class CoapClient {
      */
     static request(url: string | nodeUrl.Url, method: RequestMethod, payload?: Buffer, options?: RequestOptions): Promise<CoapResponse>;
     /**
+     * Creates a RetransmissionInfo to use for retransmission of lost packets
+     * @param messageId The message id of the corresponding request
+     */
+    private static createRetransmissionInfo(messageId);
+    /**
      * Pings a CoAP endpoint to check if it is alive
      * @param target - The target to be pinged. Must be a string, NodeJS.Url or Origin and has to contain the protocol, host and port.
      * @param timeout - (optional) Timeout in ms, after which the ping is deemed unanswered. Default: 5000ms
@@ -81,6 +86,11 @@ export declare class CoapClient {
     private static retransmit(msgID);
     private static getRetransmissionInterval();
     private static stopRetransmission(request);
+    /**
+     * When the server responds with block-wise responses, this requests the next block.
+     * @param request The original request which resulted in a block-wise response
+     */
+    private static requestNextBlock(request);
     /**
      * Observes a CoAP resource
      * @param url - The URL to be requested. Must start with coap:// or coaps://
@@ -110,7 +120,7 @@ export declare class CoapClient {
      * @param message The message to send
      * @param highPriority Whether the message should be prioritized
      */
-    private static send(connection, message, highPriority?);
+    private static send(connection, message, priority?);
     private static workOffSendQueue();
     /**
      * Does the actual sending of a message and starts concurrency/retransmission handling
