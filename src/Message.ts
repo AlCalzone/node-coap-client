@@ -1,4 +1,4 @@
-import { Option } from "./Option";
+import { findOption, Option } from "./Option";
 
 export enum MessageType {
 	CON = 0, // Confirmable
@@ -206,12 +206,10 @@ export class Message {
 	 * Checks if this message is part of a blockwise transfer
 	 */
 	public isPartialMessage(): boolean {
-		// TODO: can we put the codes in an enum?
-
 		// start with the response option, since that's more likely
-		const block2option = this.options.find(o => o.code === 23 /* Block2 */);
+		const block2option = findOption(this.options, "Block2");
 		if (this.code.isResponse() && block2option != null) return true;
-		const block1option = this.options.find(o => o.code === 27 /* Block1 */);
+		const block1option = findOption(this.options, "Block1");
 		if (this.code.isRequest() && block1option != null) return true;
 		return false;
 	}

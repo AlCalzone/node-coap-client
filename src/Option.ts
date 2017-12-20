@@ -10,13 +10,38 @@ function numberToBuffer(value: number): Buffer {
 }
 
 /**
+ * All defined option names
+ */
+export type OptionName =
+	"Observe" |
+	"Uri-Port" |
+	"Content-Format" |
+	"Max-Age" |
+	"Accept" |
+	"Block2" |
+	"Block1" |
+	"Size2" |
+	"Size1" |
+	"If-Match" |
+	"ETag" |
+	"If-None-Match" |
+	"Uri-Host" |
+	"Location-Path" |
+	"Uri-Path" |
+	"Uri-Query" |
+	"Location-Query" |
+	"Proxy-Uri" |
+	"Proxy-Scheme"
+;
+
+/**
  * Abstract base class for all message options. Provides methods to parse and serialize.
  */
 export abstract class Option {
 
 	constructor(
 		public readonly code: number,
-		public readonly name: string,
+		public readonly name: OptionName,
 		public rawValue: Buffer,
 	) {
 
@@ -173,7 +198,7 @@ export class NumericOption extends Option {
 
 	constructor(
 		code: number,
-		public readonly name: string,
+		public readonly name: OptionName,
 		public readonly repeatable: boolean,
 		public readonly maxLength: number,
 		rawValue: Buffer,
@@ -198,7 +223,7 @@ export class NumericOption extends Option {
 
 	public static create(
 		code: number,
-		name: string,
+		name: OptionName,
 		repeatable: boolean,
 		maxLength: number,
 		rawValue: Buffer,
@@ -219,7 +244,7 @@ export class BlockOption extends NumericOption {
 
 	public static create(
 		code: number,
-		name: string,
+		name: OptionName,
 		repeatable: boolean,
 		maxLength: number,
 		rawValue: Buffer,
@@ -299,7 +324,7 @@ export class BinaryOption extends Option {
 
 	constructor(
 		code: number,
-		public readonly name: string,
+		public readonly name: OptionName,
 		public readonly repeatable: boolean,
 		public readonly minLength: number,
 		public readonly maxLength: number,
@@ -324,7 +349,7 @@ export class BinaryOption extends Option {
 
 	public static create(
 		code: number,
-		name: string,
+		name: OptionName,
 		repeatable: boolean,
 		minLength: number,
 		maxLength: number,
@@ -346,7 +371,7 @@ export class StringOption extends Option {
 
 	constructor(
 		code: number,
-		public readonly name: string,
+		public readonly name: OptionName,
 		public readonly repeatable: boolean,
 		public readonly minLength: number,
 		public readonly maxLength: number,
@@ -371,7 +396,7 @@ export class StringOption extends Option {
 
 	public static create(
 		code: number,
-		name: string,
+		name: OptionName,
 		repeatable: boolean,
 		minLength: number,
 		maxLength: number,
@@ -393,7 +418,7 @@ const optionConstructors: {[code: string]: (raw: Buffer) => Option} = {};
 function defineOptionConstructor(
 	// tslint:disable-next-line:ban-types
 	constructor: Function,
-	code: number, name: string, repeatable: boolean,
+	code: number, name: OptionName, repeatable: boolean,
 	...args: any[],
 ): void {
 	optionConstructors[code] = optionConstructors[name] =
@@ -451,7 +476,7 @@ export const Options = Object.freeze({
  * @param opts The options array to search for the option
  * @param name The name of the option to search for
  */
-export function findOption(opts: Option[], name: string): Option {
+export function findOption(opts: Option[], name: OptionName): Option {
 	return opts.find(o => o.name === name);
 }
 
@@ -460,6 +485,6 @@ export function findOption(opts: Option[], name: string): Option {
  * @param opts The options array to search for the option
  * @param name The name of the option to search for
  */
-export function findOptions(opts: Option[], name: string): Option[] {
+export function findOptions(opts: Option[], name: OptionName): Option[] {
 	return opts.filter(o => o.name === name);
 }
