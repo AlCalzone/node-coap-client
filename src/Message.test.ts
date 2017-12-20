@@ -1,5 +1,7 @@
+// tslint:disable:no-unused-expression
 import { expect } from "chai";
 
+import { CoapClient as coap } from "./CoapClient";
 import { Message, MessageCode, MessageCodes, MessageType } from "./Message";
 
 describe("Message Tests =>", () => {
@@ -70,6 +72,14 @@ describe.only("blockwise tests =>", () => {
 		"hex",
 	);
 
+	const settings = {
+		host: "gw-b072bf257a41",
+		securityCode: "",
+		identity: "tradfri_1509642359115",
+		psk: "gzqZY5HUlFOOVu9f",
+	};
+	const requestBase = `coaps://${settings.host}:5684/`;
+
 	it("should parse without crashing", () => {
 		const msg = Message.parse(buf);
 		console.log(`code: ${msg.code}`);
@@ -85,5 +95,23 @@ describe.only("blockwise tests =>", () => {
 		}
 		console.log("payload:");
 		console.log(msg.payload.toString("utf-8"));
+	});
+
+	it.only("custom tests", async () => {
+		coap.setSecurityParams(settings.host, {
+			psk: { [settings.identity]: settings.psk },
+		});
+
+		// connect
+		expect(await coap.tryToConnect(requestBase)).to.be.true;
+
+		// limit response size
+		coap.setDefaultRequestOptions({
+			preferredBlockSize: 16,
+		});
+
+		const resp = await coap.request(`${requestBase}15011/15012`, "get");
+
+		coap.reset();
 	});
 });

@@ -8,7 +8,7 @@ import { createDeferredPromise, DeferredPromise } from "./lib/DeferredPromise";
 import { Origin } from "./lib/Origin";
 import { SocketWrapper } from "./lib/SocketWrapper";
 import { Message, MessageCode, MessageCodes, MessageType } from "./Message";
-import { BinaryOption, NumericOption, Option, Options, StringOption } from "./Option";
+import { BinaryOption, BlockOption, findOption, NumericOption, Option, Options, StringOption } from "./Option";
 
 // initialize debugging
 import * as debugPackage from "debug";
@@ -56,6 +56,7 @@ interface IPendingRequest {
 	url: string;
 	originalMessage: Message; // allows resending the message, includes token and message id
 	retransmit: RetransmissionInfo;
+	partialResponse?: Message;
 	// either (request):
 	promise: Promise<CoapResponse>;
 	// or (observe)
@@ -84,6 +85,7 @@ class PendingRequest extends EventEmitter implements IPendingRequest {
 	public connection: ConnectionInfo;
 	public url: string;
 	public originalMessage: Message; // allows resending the message, includes token and message id
+	public partialResponse: Message; // allows buffering for block-wise message receipt
 	public retransmit: RetransmissionInfo;
 	// either (request):
 	public promise: Promise<CoapResponse>;
@@ -152,16 +154,6 @@ function incrementToken(token: Buffer): Buffer {
 
 function incrementMessageID(msgId: number): number {
 	return (++msgId > 0xffff) ? 1 : msgId;
-}
-
-function findOption(opts: Option[], name: string): Option {
-	for (const opt of opts) {
-		if (opt.name === name) return opt;
-	}
-}
-
-function findOptions(opts: Option[], name: string): Option[] {
-	return opts.filter(opt => opt.name === name);
 }
 
 function validateBlockSize(size: number): boolean {
@@ -655,8 +647,6 @@ export class CoapClient {
 					if (coapMsg.type === MessageType.ACK) {
 						debug(`received ACK for message 0x${coapMsg.messageId.toString(16)}, stopping retransmission...`);
 						CoapClient.stopRetransmission(request);
-						// reduce the request's concurrency, since it was handled on the server
-						request.concurrency = 0;
 					}
 
 					// parse options
@@ -666,6 +656,29 @@ export class CoapClient {
 						const optCntFmt = findOption(coapMsg.options, "Content-Format");
 						if (optCntFmt) contentFormat = (optCntFmt as NumericOption).value;
 					}
+
+					if (coapMsg.isPartialMessage()) {
+						// Check if we expect more blocks
+						const blockOption = findOption(coapMsg.options, "Block2") as BlockOption; // we know this is != null
+						// TODO: check for outdated partial responses
+
+						// assemble the partial blocks
+						if (request.partialResponse == null) {
+							request.partialResponse = coapMsg;
+						} else {
+							// extend the stored buffer
+							// TODO: we might have to check if we got the correct fragment
+							request.partialResponse.payload = Buffer.concat([request.partialResponse.payload, coapMsg.payload]);
+						}
+						if (!blockOption.isLastBlock) {
+							// TODO: request the next block
+							return;
+						}
+					}
+
+					// Now that the response is complete, also reduce the request's concurrency,
+					// so other requests can be fired off
+					if (coapMsg.type === MessageType.ACK) request.concurrency = 0;
 
 					// prepare the response
 					const response: CoapResponse = {

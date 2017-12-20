@@ -87,15 +87,6 @@ function incrementToken(token) {
 function incrementMessageID(msgId) {
     return (++msgId > 0xffff) ? 1 : msgId;
 }
-function findOption(opts, name) {
-    for (const opt of opts) {
-        if (opt.name === name)
-            return opt;
-    }
-}
-function findOptions(opts, name) {
-    return opts.filter(opt => opt.name === name);
-}
 function validateBlockSize(size) {
     // block size is represented as 2**(4 + X) where X is an integer from 0..6
     const exp = Math.log2(size) - 4;
@@ -523,17 +514,37 @@ class CoapClient {
                     if (coapMsg.type === Message_1.MessageType.ACK) {
                         debug(`received ACK for message 0x${coapMsg.messageId.toString(16)}, stopping retransmission...`);
                         CoapClient.stopRetransmission(request);
-                        // reduce the request's concurrency, since it was handled on the server
-                        request.concurrency = 0;
                     }
                     // parse options
                     let contentFormat = null;
                     if (coapMsg.options && coapMsg.options.length) {
                         // see if the response contains information about the content format
-                        const optCntFmt = findOption(coapMsg.options, "Content-Format");
+                        const optCntFmt = Option_1.findOption(coapMsg.options, "Content-Format");
                         if (optCntFmt)
                             contentFormat = optCntFmt.value;
                     }
+                    if (coapMsg.isPartialMessage()) {
+                        // Check if we expect more blocks
+                        const blockOption = Option_1.findOption(coapMsg.options, "Block2"); // we know this is != null
+                        // TODO: check for outdated partial responses
+                        // assemble the partial blocks
+                        if (request.partialResponse == null) {
+                            request.partialResponse = coapMsg;
+                        }
+                        else {
+                            // extend the stored buffer
+                            // TODO: we might have to check if we got the correct fragment
+                            request.partialResponse.payload = Buffer.concat([request.partialResponse.payload, coapMsg.payload]);
+                        }
+                        if (!blockOption.isLastBlock) {
+                            // TODO: request the next block
+                            return;
+                        }
+                    }
+                    // Now that the response is complete, also reduce the request's concurrency,
+                    // so other requests can be fired off
+                    if (coapMsg.type === Message_1.MessageType.ACK)
+                        request.concurrency = 0;
                     // prepare the response
                     const response = {
                         code: coapMsg.code,

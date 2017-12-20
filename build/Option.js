@@ -367,3 +367,21 @@ exports.Options = Object.freeze({
     },
 });
 // tslint:enable:no-string-literal
+/**
+ * Searches for a single option in an array of options
+ * @param opts The options array to search for the option
+ * @param name The name of the option to search for
+ */
+function findOption(opts, name) {
+    return opts.find(o => o.name === name);
+}
+exports.findOption = findOption;
+/**
+ * Searches for a repeatable option in an array of options
+ * @param opts The options array to search for the option
+ * @param name The name of the option to search for
+ */
+function findOptions(opts, name) {
+    return opts.filter(o => o.name === name);
+}
+exports.findOptions = findOptions;

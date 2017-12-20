@@ -104,3 +104,15 @@ export declare const Options: Readonly<{
     Block1: (num: number, isLast: boolean, size: number) => Option;
     Block2: (num: number, isLast: boolean, size: number) => Option;
 }>;
+/**
+ * Searches for a single option in an array of options
+ * @param opts The options array to search for the option
+ * @param name The name of the option to search for
+ */
+export declare function findOption(opts: Option[], name: string): Option;
+/**
+ * Searches for a repeatable option in an array of options
+ * @param opts The options array to search for the option
+ * @param name The name of the option to search for
+ */
+export declare function findOptions(opts: Option[], name: string): Option[];

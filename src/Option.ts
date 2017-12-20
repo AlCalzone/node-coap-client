@@ -445,3 +445,21 @@ export const Options = Object.freeze({
 	},
 });
 // tslint:enable:no-string-literal
+
+/**
+ * Searches for a single option in an array of options
+ * @param opts The options array to search for the option
+ * @param name The name of the option to search for
+ */
+export function findOption(opts: Option[], name: string): Option {
+	return opts.find(o => o.name === name);
+}
+
+/**
+ * Searches for a repeatable option in an array of options
+ * @param opts The options array to search for the option
+ * @param name The name of the option to search for
+ */
+export function findOptions(opts: Option[], name: string): Option[] {
+	return opts.filter(o => o.name === name);
+}
