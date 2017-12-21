@@ -561,7 +561,12 @@ class CoapClient {
                             // TODO: we might have to check if we got the correct fragment
                             request.partialResponse.payload = Buffer.concat([request.partialResponse.payload, coapMsg.payload]);
                         }
-                        if (!blockOption.isLastBlock) {
+                        if (blockOption.isLastBlock) {
+                            // override the message payload with the assembled partial payload
+                            // so the full payload gets returned to the listeners
+                            coapMsg.payload = request.partialResponse.payload;
+                        }
+                        else {
                             CoapClient.requestNextBlock(request);
                             responseIsComplete = false;
                         }
@@ -659,7 +664,7 @@ class CoapClient {
             // and continue working off the queue when it drops
             request.on("concurrencyChanged", (req) => {
                 debug(`request 0x${message.messageId.toString(16)}: concurrency changed => ${req.concurrency}`);
-                if (request.concurrency === 0)
+                if (req.concurrency === 0)
                     CoapClient.workOffSendQueue();
             });
         }

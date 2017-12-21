@@ -108,10 +108,12 @@ describe.only("blockwise tests =>", () => {
 
 		// limit response size
 		coap.setDefaultRequestOptions({
-			preferredBlockSize: 16,
+			preferredBlockSize: 64,
 		});
 
 		const resp = await coap.request(`${requestBase}15011/15012`, "get");
+		console.log("got complete payload:");
+		console.log(resp.payload.toString("utf8"));
 
 		coap.reset();
 	});
