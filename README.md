@@ -145,6 +145,9 @@ To only reset connections and requests for a specific hostname, pass the hostnam
 
 ## Changelog
 
+#### 0.5.0 (2017-12-24)
+* (AlCalzone) Support receiving block-wise messages
+
 #### 0.4.8 (2017-10-19)
 * (AlCalzone) Fixed retransmission
 
