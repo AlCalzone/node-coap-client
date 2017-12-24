@@ -25,21 +25,18 @@ describe("Message Tests =>", () => {
 		]);
 		const msg = Message.parse(raw);
 
-		expect(msg.version).to.equal(1, "data mismatch");
-		expect(msg.type).to.equal(MessageType.ACK, "data mismatch");
-		expect(msg.code).to.equal(0, "data mismatch");
-		expect(msg.messageId).to.equal(0x1234, "data mismatch");
-		expect(msg.token).to.deep.equal(Buffer.from([]), "data mismatch");
-		expect(msg.options).to.deep.equal([], "data mismatch");
-		expect(msg.payload).to.deep.equal(Buffer.from("abcdef", "hex"), "data mismatch");
+		expect(msg.version).to.equal(1, "data mismatch (version)");
+		expect(msg.type).to.equal(MessageType.ACK, "data mismatch (type)");
+		expect(msg.code.value).to.equal(0, "data mismatch (code)");
+		expect(msg.messageId).to.equal(0x1234, "data mismatch (messageId)");
+		expect(msg.token).to.deep.equal(Buffer.from([]), "data mismatch (token)");
+		expect(msg.options).to.deep.equal([], "data mismatch (options)");
+		expect(msg.payload).to.deep.equal(Buffer.from("abcdef", "hex"), "data mismatch (payload)");
 	});
 
-});
-
-describe.only("blockwise tests =>", () => {
 	// This buffer from https://github.com/AlCalzone/node-coap-client/issues/21
 	// is a raw message contains the Block option
-	const buf = Buffer.from(
+	const blockwiseMsg = Buffer.from(
 		"64450025018fccf460613223093a80910eff7b2239303031223a224556455259444159" +
 		"222c2239303032223a313530383235303135392c2239303638223a312c223930303322" +
 		"3a3230303436382c2239303537223a302c223135303133223a5b7b2235383530223a31" +
@@ -73,48 +70,21 @@ describe.only("blockwise tests =>", () => {
 		"hex",
 	);
 
-	const settings = {
-		host: "gw-b072bf257a41",
-		securityCode: "",
-		identity: "tradfri_1509642359115",
-		psk: "gzqZY5HUlFOOVu9f",
-	};
-	const requestBase = `coaps://${settings.host}:5684/`;
-
-	it("should parse without crashing", () => {
-		const msg = Message.parse(buf);
-		console.log(`code: ${msg.code}`);
-		console.log(`messageId: ${msg.messageId}`);
-		if (msg.token != null) {
-			console.log(`token: ${msg.token.toString("hex")}`);
-		}
-		console.log(`type: ${msg.type}`);
-		console.log(`version: ${msg.version}`);
-		console.log("options:");
-		for (const opt of msg.options) {
-			console.log(`  [${opt.constructor.name}] ${opt.toString()}`);
-		}
-		console.log("payload:");
-		console.log(msg.payload.toString("utf-8"));
+	it("should parse blockwise messages without crashing", () => {
+		const msg = Message.parse(blockwiseMsg);
+		// console.log(`code: ${msg.code}`);
+		// console.log(`messageId: ${msg.messageId}`);
+		// if (msg.token != null) {
+		// 	console.log(`token: ${msg.token.toString("hex")}`);
+		// }
+		// console.log(`type: ${msg.type}`);
+		// console.log(`version: ${msg.version}`);
+		// console.log("options:");
+		// for (const opt of msg.options) {
+		// 	console.log(`  [${opt.constructor.name}] ${opt.toString()}`);
+		// }
+		// console.log("payload:");
+		// console.log(msg.payload.toString("utf-8"));
 	});
 
-	it.only("custom tests", async () => {
-		coap.setSecurityParams(settings.host, {
-			psk: { [settings.identity]: settings.psk },
-		});
-
-		// connect
-		expect(await coap.tryToConnect(requestBase)).to.be.true;
-
-		// limit response size
-		coap.setDefaultRequestOptions({
-			preferredBlockSize: 64,
-		});
-
-		const resp = await coap.request(`${requestBase}15011/15012`, "get");
-		console.log("got complete payload:");
-		console.log(resp.payload.toString("utf8"));
-
-		coap.reset();
-	});
 });
