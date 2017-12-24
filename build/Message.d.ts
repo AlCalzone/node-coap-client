@@ -36,6 +36,7 @@ export declare const MessageCodes: Readonly<{
         valid: MessageCode;
         changed: MessageCode;
         content: MessageCode;
+        continue: MessageCode;
     };
     clientError: {
         __major: number;
@@ -46,6 +47,7 @@ export declare const MessageCodes: Readonly<{
         notFound: MessageCode;
         methodNotAllowed: MessageCode;
         notAcceptable: MessageCode;
+        requestEntityIncomplete: MessageCode;
         preconditionFailed: MessageCode;
         requestEntityTooLarge: MessageCode;
         unsupportedContentFormat: MessageCode;
@@ -81,4 +83,8 @@ export declare class Message {
      * serializes this message into a buffer
      */
     serialize(): Buffer;
+    /**
+     * Checks if this message is part of a blockwise transfer
+     */
+    isPartialMessage(): boolean;
 }

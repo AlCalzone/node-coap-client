@@ -1,4 +1,4 @@
-import { Option } from "./Option";
+import { findOption, Option } from "./Option";
 
 export enum MessageType {
 	CON = 0, // Confirmable
@@ -58,6 +58,7 @@ export const MessageCodes = Object.freeze({
 		valid: new MessageCode(2, 3),
 		changed: new MessageCode(2, 4),
 		content: new MessageCode(2, 5),
+		continue: new MessageCode(2, 31),
 	},
 
 	clientError: {
@@ -69,6 +70,7 @@ export const MessageCodes = Object.freeze({
 		notFound: new MessageCode(4, 4),
 		methodNotAllowed: new MessageCode(4, 5),
 		notAcceptable: new MessageCode(4, 6),
+		requestEntityIncomplete: new MessageCode(4, 8),
 		preconditionFailed: new MessageCode(4, 12),
 		requestEntityTooLarge: new MessageCode(4, 13),
 		unsupportedContentFormat: new MessageCode(4, 15),
@@ -198,6 +200,18 @@ export class Message {
 		}
 
 		return ret;
+	}
+
+	/**
+	 * Checks if this message is part of a blockwise transfer
+	 */
+	public isPartialMessage(): boolean {
+		// start with the response option, since that's more likely
+		const block2option = findOption(this.options, "Block2");
+		if (this.code.isResponse() && block2option != null) return true;
+		const block1option = findOption(this.options, "Block1");
+		if (this.code.isRequest() && block1option != null) return true;
+		return false;
 	}
 
 }

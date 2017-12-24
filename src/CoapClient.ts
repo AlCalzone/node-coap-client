@@ -8,10 +8,11 @@ import { createDeferredPromise, DeferredPromise } from "./lib/DeferredPromise";
 import { Origin } from "./lib/Origin";
 import { SocketWrapper } from "./lib/SocketWrapper";
 import { Message, MessageCode, MessageCodes, MessageType } from "./Message";
-import { BinaryOption, NumericOption, Option, Options, StringOption } from "./Option";
+import { BinaryOption, BlockOption, findOption, NumericOption, Option, Options, StringOption } from "./Option";
 
 // initialize debugging
 import * as debugPackage from "debug";
+import { logMessage } from "./lib/LogMessage";
 const debug = debugPackage("node-coap-client");
 
 // print version info
@@ -29,6 +30,8 @@ export interface RequestOptions {
 	confirmable?: boolean;
 	/** Whether this message will be retransmitted on loss */
 	retransmit?: boolean;
+	/** The preferred block size of partial responses */
+	preferredBlockSize?: number;
 }
 
 export interface CoapResponse {
@@ -53,6 +56,7 @@ interface IPendingRequest {
 	url: string;
 	originalMessage: Message; // allows resending the message, includes token and message id
 	retransmit: RetransmissionInfo;
+	partialResponse?: Message;
 	// either (request):
 	promise: Promise<CoapResponse>;
 	// or (observe)
@@ -81,6 +85,7 @@ class PendingRequest extends EventEmitter implements IPendingRequest {
 	public connection: ConnectionInfo;
 	public url: string;
 	public originalMessage: Message; // allows resending the message, includes token and message id
+	public partialResponse: Message; // allows buffering for block-wise message receipt
 	public retransmit: RetransmissionInfo;
 	// either (request):
 	public promise: Promise<CoapResponse>;
@@ -151,14 +156,14 @@ function incrementMessageID(msgId: number): number {
 	return (++msgId > 0xffff) ? 1 : msgId;
 }
 
-function findOption(opts: Option[], name: string): Option {
-	for (const opt of opts) {
-		if (opt.name === name) return opt;
-	}
-}
-
-function findOptions(opts: Option[], name: string): Option[] {
-	return opts.filter(opt => opt.name === name);
+function validateBlockSize(size: number): boolean {
+	// block size is represented as 2**(4 + X) where X is an integer from 0..6
+	const exp = Math.log2(size) - 4;
+	// is the exponent an integer?
+	if (exp % 1 !== 0) return false;
+	// is the exponent in the range of 0..6?
+	if (exp < 0 || exp > 6) return false;
+	return true;
 }
 
 /**
@@ -179,14 +184,51 @@ export class CoapClient {
 	private static pendingRequestsByUrl: { [url: string]: PendingRequest } = {};
 	/** Queue of the messages waiting to be sent */
 	private static sendQueue: QueuedMessage[] = [];
-	/** Number of message we expect an answer for */
-	private static concurrency: number = 0;
+	/** Default values for request options */
+	private static defaultRequestOptions: RequestOptions = {
+		confirmable: true,
+		keepAlive: true,
+		retransmit: true,
+		preferredBlockSize: null,
+	};
 
 	/**
 	 * Sets the security params to be used for the given hostname
 	 */
 	public static setSecurityParams(hostname: string, params: SecurityParameters) {
 		CoapClient.dtlsParams[hostname] = params;
+	}
+
+	/**
+	 * Sets the default options for requests
+	 * @param defaults The default options to use for requests when no options are given
+	 */
+	public static setDefaultRequestOptions(defaults: RequestOptions): void {
+		if (defaults.confirmable != null) this.defaultRequestOptions.confirmable = defaults.confirmable;
+		if (defaults.keepAlive != null) this.defaultRequestOptions.keepAlive = defaults.keepAlive;
+		if (defaults.retransmit != null) this.defaultRequestOptions.retransmit = defaults.retransmit;
+		if (defaults.preferredBlockSize != null) {
+			if (!validateBlockSize(defaults.preferredBlockSize)) {
+				throw new Error(`${defaults.preferredBlockSize} is not a valid block size. The value must be a power of 2 between 16 and 1024`);
+			}
+			this.defaultRequestOptions.preferredBlockSize = defaults.preferredBlockSize;
+		}
+	}
+
+	private static getRequestOptions(options?: RequestOptions): RequestOptions {
+		// ensure we have options and set the default params
+		options = options || {};
+		if (options.confirmable == null) options.confirmable = this.defaultRequestOptions.confirmable;
+		if (options.keepAlive == null) options.keepAlive = this.defaultRequestOptions.keepAlive;
+		if (options.retransmit == null) options.retransmit = this.defaultRequestOptions.retransmit;
+		if (options.preferredBlockSize == null) {
+			options.preferredBlockSize = this.defaultRequestOptions.preferredBlockSize;
+		} else {
+			if (!validateBlockSize(options.preferredBlockSize)) {
+				throw new Error(`${options.preferredBlockSize} is not a valid block size. The value must be a power of 2 between 16 and 1024`);
+			}
+		}
+		return options;
 	}
 
 	/**
@@ -266,14 +308,10 @@ export class CoapClient {
 		}
 
 		// ensure we have options and set the default params
-		options = options || {};
-		if (options.confirmable == null) options.confirmable = true;
-		if (options.keepAlive == null) options.keepAlive = true;
-		if (options.retransmit == null) options.retransmit = true;
+		options = this.getRequestOptions(options);
 
 		// retrieve or create the connection we're going to use
 		const origin = Origin.fromUrl(url);
-		const originString = origin.toString();
 		const connection = await CoapClient.getConnection(origin);
 
 		// find all the message parameters
@@ -281,13 +319,10 @@ export class CoapClient {
 		const code = MessageCodes.request[method];
 		const messageId = connection.lastMsgId = incrementMessageID(connection.lastMsgId);
 		const token = connection.lastToken = incrementToken(connection.lastToken);
-		const tokenString = token.toString("hex");
 		payload = payload || Buffer.from([]);
 
 		// create message options, be careful to order them by code, no sorting is implemented yet
 		const msgOptions: Option[] = [];
-		//// [6] observe or not?
-		// msgOptions.push(Options.Observe(options.observe))
 		// [11] path of the request
 		let pathname = url.pathname || "";
 		while (pathname.startsWith("/")) { pathname = pathname.slice(1); }
@@ -298,6 +333,10 @@ export class CoapClient {
 		);
 		// [12] content format
 		msgOptions.push(Options.ContentFormat(ContentFormats.application_json));
+		// [23] Block2 (preferred response block size)
+		if (options.preferredBlockSize != null) {
+			msgOptions.push(Options.Block2(0, true, options.preferredBlockSize));
+		}
 
 		// create the promise we're going to return
 		const response = createDeferredPromise<CoapResponse>();
@@ -308,13 +347,7 @@ export class CoapClient {
 		// create the retransmission info
 		let retransmit: RetransmissionInfo;
 		if (options.retransmit && type === MessageType.CON) {
-			const timeout = CoapClient.getRetransmissionInterval();
-			retransmit = {
-				timeout,
-				action: () => CoapClient.retransmit(messageId),
-				jsTimeout: null,
-				counter: 0,
-			};
+			retransmit = CoapClient.createRetransmissionInfo(messageId);
 		}
 
 		// remember the request
@@ -337,6 +370,19 @@ export class CoapClient {
 
 		return response;
 
+	}
+
+	/**
+	 * Creates a RetransmissionInfo to use for retransmission of lost packets
+	 * @param messageId The message id of the corresponding request
+	 */
+	private static createRetransmissionInfo(messageId: number): RetransmissionInfo {
+		return {
+			timeout: CoapClient.getRetransmissionInterval(),
+			action: () => CoapClient.retransmit(messageId),
+			jsTimeout: null,
+			counter: 0,
+		};
 	}
 
 	/**
@@ -437,7 +483,7 @@ export class CoapClient {
 		debug(`retransmitting message ${msgID.toString(16)}, try #${request.retransmit.counter + 1}`);
 
 		// resend the message
-		CoapClient.send(request.connection, request.originalMessage, true);
+		CoapClient.send(request.connection, request.originalMessage, "immediate");
 		// and increase the params
 		request.retransmit.counter++;
 		request.retransmit.timeout *= 2;
@@ -452,6 +498,35 @@ export class CoapClient {
 		if (request.retransmit == null) return;
 		clearTimeout(request.retransmit.jsTimeout);
 		request.retransmit = null;
+	}
+
+	/**
+	 * When the server responds with block-wise responses, this requests the next block.
+	 * @param request The original request which resulted in a block-wise response
+	 */
+	private static requestNextBlock(request: PendingRequest) {
+		const message = request.originalMessage;
+		const connection = request.connection;
+
+		// requests for the next block are a new message with a new message id
+		const oldMsgID = message.messageId;
+		message.messageId = connection.lastMsgId = incrementMessageID(connection.lastMsgId);
+		// this means we have to update the dictionaries aswell, so the request is still found
+		CoapClient.pendingRequestsByMsgID[message.messageId] = request;
+		delete CoapClient.pendingRequestsByMsgID[oldMsgID];
+
+		// even if the original request was an observe, the partial requests are not
+		message.options = message.options.filter(o => o.name !== "Observe");
+
+		// Change the Block2 option, so the server knows which block to send
+		const block2Opt = findOption(message.options, "Block2") as BlockOption;
+		block2Opt.isLastBlock = true; // not sure if that's necessary, but better be safe
+		block2Opt.blockNumber++;
+
+		// enable retransmission for this updated request
+		request.retransmit = CoapClient.createRetransmissionInfo(message.messageId);
+		// and enqueue it for sending
+		CoapClient.send(connection, message, "high");
 	}
 
 	/**
@@ -475,14 +550,10 @@ export class CoapClient {
 		}
 
 		// ensure we have options and set the default params
-		options = options || {};
-		if (options.confirmable == null) options.confirmable = true;
-		if (options.keepAlive == null) options.keepAlive = true;
-		if (options.retransmit == null) options.retransmit = true;
+		options = this.getRequestOptions(options);
 
 		// retrieve or create the connection we're going to use
 		const origin = Origin.fromUrl(url);
-		const originString = origin.toString();
 		const connection = await CoapClient.getConnection(origin);
 
 		// find all the message parameters
@@ -490,7 +561,6 @@ export class CoapClient {
 		const code = MessageCodes.request[method];
 		const messageId = connection.lastMsgId = incrementMessageID(connection.lastMsgId);
 		const token = connection.lastToken = incrementToken(connection.lastToken);
-		const tokenString = token.toString("hex");
 		payload = payload || Buffer.from([]);
 
 		// create message options, be careful to order them by code, no sorting is implemented yet
@@ -508,8 +578,8 @@ export class CoapClient {
 		// [12] content format
 		msgOptions.push(Options.ContentFormat(ContentFormats.application_json));
 
-		// create the promise we're going to return
-		const response = createDeferredPromise<CoapResponse>();
+		// In contrast to requests, we don't work with a deferred promise when observing
+		// Instead, we invoke a callback for *every* response.
 
 		// create the message we're going to send
 		const message = CoapClient.createMessage(type, code, messageId, token, msgOptions, payload);
@@ -517,13 +587,7 @@ export class CoapClient {
 		// create the retransmission info
 		let retransmit: RetransmissionInfo;
 		if (options.retransmit && type === MessageType.CON) {
-			const timeout = CoapClient.getRetransmissionInterval();
-			retransmit = {
-				timeout,
-				action: () => CoapClient.retransmit(messageId),
-				jsTimeout: null,
-				counter: 0,
-			};
+			retransmit = CoapClient.createRetransmissionInfo(messageId);
 		}
 
 		// remember the request
@@ -565,7 +629,7 @@ export class CoapClient {
 	private static onMessage(origin: string, message: Buffer, rinfo: dgram.RemoteInfo) {
 		// parse the CoAP message
 		const coapMsg = Message.parse(message);
-		debug(`received message: ID=0x${coapMsg.messageId.toString(16)}${(coapMsg.token && coapMsg.token.length) ? (", token=" + coapMsg.token.toString("hex")) : ""}`);
+		logMessage(coapMsg);
 
 		if (coapMsg.code.isEmpty()) {
 			// ACK or RST
@@ -602,7 +666,6 @@ export class CoapClient {
 			// we are a client implementation, we should not get requests
 			// ignore them
 		} else if (coapMsg.code.isResponse()) {
-			debug(`response with payload: ${coapMsg.payload.toString("utf8")}`);
 			// this is a response, find out what to do with it
 			if (coapMsg.token && coapMsg.token.length) {
 				// this message has a token, check which request it belongs to
@@ -614,8 +677,6 @@ export class CoapClient {
 					if (coapMsg.type === MessageType.ACK) {
 						debug(`received ACK for message 0x${coapMsg.messageId.toString(16)}, stopping retransmission...`);
 						CoapClient.stopRetransmission(request);
-						// reduce the request's concurrency, since it was handled on the server
-						request.concurrency = 0;
 					}
 
 					// parse options
@@ -625,6 +686,37 @@ export class CoapClient {
 						const optCntFmt = findOption(coapMsg.options, "Content-Format");
 						if (optCntFmt) contentFormat = (optCntFmt as NumericOption).value;
 					}
+
+					let responseIsComplete: boolean = true;
+					if (coapMsg.isPartialMessage()) {
+						// Check if we expect more blocks
+						const blockOption = findOption(coapMsg.options, "Block2") as BlockOption; // we know this is != null
+						// TODO: check for outdated partial responses
+
+						// assemble the partial blocks
+						if (request.partialResponse == null) {
+							request.partialResponse = coapMsg;
+						} else {
+							// extend the stored buffer
+							// TODO: we might have to check if we got the correct fragment
+							request.partialResponse.payload = Buffer.concat([request.partialResponse.payload, coapMsg.payload]);
+						}
+						if (blockOption.isLastBlock) {
+							// override the message payload with the assembled partial payload
+							// so the full payload gets returned to the listeners
+							coapMsg.payload = request.partialResponse.payload;
+						} else {
+							CoapClient.requestNextBlock(request);
+							responseIsComplete = false;
+						}
+					}
+
+					// Now that we have a response, also reduce the request's concurrency,
+					// so other requests can be fired off
+					if (coapMsg.type === MessageType.ACK) request.concurrency = 0;
+
+					// while we only have a partial response, we cannot return it to the caller yet
+					if (!responseIsComplete) return;
 
 					// prepare the response
 					const response: CoapResponse = {
@@ -651,7 +743,7 @@ export class CoapClient {
 							MessageCodes.empty,
 							coapMsg.messageId,
 						);
-						CoapClient.send(request.connection, ACK, true);
+						CoapClient.send(request.connection, ACK, "immediate");
 					}
 
 				} else { // request == null
@@ -669,7 +761,7 @@ export class CoapClient {
 							MessageCodes.empty,
 							coapMsg.messageId,
 						);
-						CoapClient.send(connection, RST, true);
+						CoapClient.send(connection, RST, "immediate");
 					}
 				} // request != null?
 			} // (coapMsg.token && coapMsg.token.length)
@@ -709,19 +801,32 @@ export class CoapClient {
 	private static send(
 		connection: ConnectionInfo,
 		message: Message,
-		highPriority: boolean = false,
+		priority: "normal" | "high" | "immediate" = "normal",
 	): void {
 
 		const request = CoapClient.findRequest({msgID: message.messageId});
 
-		if (highPriority) {
-			// Send high-prio messages immediately
-			debug(`sending high priority message 0x${message.messageId.toString(16)}`);
-			CoapClient.doSend(connection, request, message);
-		} else {
-			// Put the message in the queue
-			CoapClient.sendQueue.push({connection, message});
-			debug(`added message to send queue, new length = ${CoapClient.sendQueue.length}`);
+		switch (priority) {
+			case "immediate": {
+				// Send high-prio messages immediately
+				// This is for ACKs, RSTs and retransmissions
+				debug(`sending high priority message 0x${message.messageId.toString(16)}`);
+				CoapClient.doSend(connection, request, message);
+				break;
+			}
+			case "normal": {
+				// Put the message in the queue
+				CoapClient.sendQueue.push({connection, message});
+				debug(`added message to the send queue with normal priority, new length = ${CoapClient.sendQueue.length}`);
+				break;
+			}
+			case "high": {
+				// Put the message in the queue (in first position)
+				// This is for subsequent requests to blockwise resources
+				CoapClient.sendQueue.unshift({connection, message});
+				debug(`added message to the send queue with high priority, new length = ${CoapClient.sendQueue.length}`);
+				break;
+			}
 		}
 
 		// if there's a request for this message, listen for concurrency changes
@@ -729,7 +834,7 @@ export class CoapClient {
 			// and continue working off the queue when it drops
 			request.on("concurrencyChanged", (req: PendingRequest) => {
 				debug(`request 0x${message.messageId.toString(16)}: concurrency changed => ${req.concurrency}`);
-				if (request.concurrency === 0) CoapClient.workOffSendQueue();
+				if (req.concurrency === 0) CoapClient.workOffSendQueue();
 			});
 		}
 
@@ -929,7 +1034,6 @@ export class CoapClient {
 		}
 
 		// retrieve or create the connection we're going to use
-		const originString = target.toString();
 		try {
 			await CoapClient.getConnection(target);
 			return true;
