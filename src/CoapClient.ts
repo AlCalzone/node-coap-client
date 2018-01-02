@@ -1,6 +1,5 @@
 import * as crypto from "crypto";
 import * as dgram from "dgram";
-import { EventEmitter } from "events";
 import { dtls } from "node-dtls-client";
 import * as nodeUrl from "url";
 import { ContentFormats } from "./ContentFormats";
@@ -65,10 +64,9 @@ interface IPendingRequest {
 	observe: boolean;
 	concurrency: number;
 }
-class PendingRequest extends EventEmitter implements IPendingRequest {
+class PendingRequest implements IPendingRequest {
 
 	constructor(initial?: IPendingRequest) {
-		super();
 		if (!initial) return;
 
 		this.connection = initial.connection;
@@ -98,7 +96,7 @@ class PendingRequest extends EventEmitter implements IPendingRequest {
 	public set concurrency(value: number) {
 		const changed = value !== this._concurrency;
 		this._concurrency = value;
-		if (changed) this.emit("concurrencyChanged", this);
+		if (changed) CoapClient.onConcurrencyChanged(this);
 	}
 	public get concurrency(): number {
 		return this._concurrency;
@@ -826,17 +824,22 @@ export class CoapClient {
 			}
 		}
 
-		// if there's a request for this message, listen for concurrency changes
-		if (request != null) {
-			// and continue working off the queue when it drops
-			request.on("concurrencyChanged", (req: PendingRequest) => {
-				debug(`request 0x${message.messageId.toString(16)}: concurrency changed => ${req.concurrency}`);
-				if (req.concurrency === 0) CoapClient.workOffSendQueue();
-			});
-		}
-
 		// start working it off now (maybe)
 		CoapClient.workOffSendQueue();
+	}
+	/**
+	 * Gets called whenever a request's concurrency has changed
+	 * @param req The pending request whose concurrency has changed
+	 * @internal
+	 */
+	public static onConcurrencyChanged(req: PendingRequest) {
+		// only handle requests with a message (in case there's an edge case without a message)
+		const message = req.originalMessage;
+		if (message == null) return;
+		// only handle requests we haven't forgotten yet
+		if (!CoapClient.pendingRequestsByMsgID.hasOwnProperty(message.messageId)) return;
+		debug(`request 0x${message.messageId.toString(16)}: concurrency changed => ${req.concurrency}`);
+		if (req.concurrency === 0) CoapClient.workOffSendQueue();
 	}
 	private static workOffSendQueue() {
 
@@ -960,8 +963,6 @@ export class CoapClient {
 
 		// Set concurrency to 0, so the send queue can continue
 		request.concurrency = 0;
-		// Clean up the event listeners
-		request.removeAllListeners();
 
 		// If this request doesn't have the keepAlive option,
 		// close the connection if it was the last one with the same origin

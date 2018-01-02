@@ -10,6 +10,7 @@
         "removeComments": false,
         "sourceMap": false,
         "inlineSourceMap": false,
-        "target": "es2015"
+        "target": "es2015",
+        "stripInternal": true
     }
 }

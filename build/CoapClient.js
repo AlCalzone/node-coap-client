@@ -10,7 +10,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const crypto = require("crypto");
 const dgram = require("dgram");
-const events_1 = require("events");
 const node_dtls_client_1 = require("node-dtls-client");
 const nodeUrl = require("url");
 const ContentFormats_1 = require("./ContentFormats");
@@ -30,9 +29,8 @@ debug(`CoAP client version ${npmVersion}`);
 function urlToString(url) {
     return `${url.protocol}//${url.hostname}:${url.port}${url.pathname}`;
 }
-class PendingRequest extends events_1.EventEmitter {
+class PendingRequest {
     constructor(initial) {
-        super();
         if (!initial)
             return;
         this.connection = initial.connection;
@@ -49,7 +47,7 @@ class PendingRequest extends events_1.EventEmitter {
         const changed = value !== this._concurrency;
         this._concurrency = value;
         if (changed)
-            this.emit("concurrencyChanged", this);
+            CoapClient.onConcurrencyChanged(this);
     }
     get concurrency() {
         return this._concurrency;
@@ -658,17 +656,25 @@ class CoapClient {
                 break;
             }
         }
-        // if there's a request for this message, listen for concurrency changes
-        if (request != null) {
-            // and continue working off the queue when it drops
-            request.on("concurrencyChanged", (req) => {
-                debug(`request 0x${message.messageId.toString(16)}: concurrency changed => ${req.concurrency}`);
-                if (req.concurrency === 0)
-                    CoapClient.workOffSendQueue();
-            });
-        }
         // start working it off now (maybe)
         CoapClient.workOffSendQueue();
+    }
+    /**
+     * Gets called whenever a request's concurrency has changed
+     * @param req The pending request whose concurrency has changed
+     * @internal
+     */
+    static onConcurrencyChanged(req) {
+        // only handle requests with a message (in case there's an edge case without a message)
+        const message = req.originalMessage;
+        if (message == null)
+            return;
+        // only handle requests we haven't forgotten yet
+        if (!CoapClient.pendingRequestsByMsgID.hasOwnProperty(message.messageId))
+            return;
+        debug(`request 0x${message.messageId.toString(16)}: concurrency changed => ${req.concurrency}`);
+        if (req.concurrency === 0)
+            CoapClient.workOffSendQueue();
     }
     static workOffSendQueue() {
         // check if there are messages to send
@@ -762,8 +768,6 @@ class CoapClient {
         }
         // Set concurrency to 0, so the send queue can continue
         request.concurrency = 0;
-        // Clean up the event listeners
-        request.removeAllListeners();
         // If this request doesn't have the keepAlive option,
         // close the connection if it was the last one with the same origin
         if (!request.keepAlive) {
