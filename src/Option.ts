@@ -10,13 +10,38 @@ function numberToBuffer(value: number): Buffer {
 }
 
 /**
+ * All defined option names
+ */
+export type OptionName =
+	"Observe" |
+	"Uri-Port" |
+	"Content-Format" |
+	"Max-Age" |
+	"Accept" |
+	"Block2" |
+	"Block1" |
+	"Size2" |
+	"Size1" |
+	"If-Match" |
+	"ETag" |
+	"If-None-Match" |
+	"Uri-Host" |
+	"Location-Path" |
+	"Uri-Path" |
+	"Uri-Query" |
+	"Location-Query" |
+	"Proxy-Uri" |
+	"Proxy-Scheme"
+;
+
+/**
  * Abstract base class for all message options. Provides methods to parse and serialize.
  */
 export abstract class Option {
 
 	constructor(
 		public readonly code: number,
-		public readonly name: string,
+		public readonly name: OptionName,
 		public rawValue: Buffer,
 	) {
 
@@ -173,7 +198,7 @@ export class NumericOption extends Option {
 
 	constructor(
 		code: number,
-		public readonly name: string,
+		public readonly name: OptionName,
 		public readonly repeatable: boolean,
 		public readonly maxLength: number,
 		rawValue: Buffer,
@@ -198,12 +223,96 @@ export class NumericOption extends Option {
 
 	public static create(
 		code: number,
-		name: string,
+		name: OptionName,
 		repeatable: boolean,
 		maxLength: number,
 		rawValue: Buffer,
 	): NumericOption {
 		return new NumericOption(code, name, repeatable, maxLength, rawValue);
+	}
+
+	public toString(): string {
+		return `${this.name} (${this.code}): ${this.value}`;
+	}
+
+}
+
+/**
+ * Specialized Message optionis for blockwise transfer
+ */
+export class BlockOption extends NumericOption {
+
+	public static create(
+		code: number,
+		name: OptionName,
+		repeatable: boolean,
+		maxLength: number,
+		rawValue: Buffer,
+	): BlockOption {
+		return new BlockOption(code, name, repeatable, maxLength, rawValue);
+	}
+
+	/**
+	 * The size exponent of this block in the range 0..6
+	 * The actual block size is calculated by 2**(4 + exp)
+	 */
+	public get sizeExponent(): number {
+		return this.value & 0b111;
+	}
+	public set sizeExponent(value: number) {
+		if (value < 0 || value > 6) {
+			throw new Error("the size exponent must be in the range of 0..6");
+		}
+		// overwrite the last 3 bits
+		this.value = (this.value & ~0b111) | value;
+	}
+	/**
+	 * The size of this block in bytes
+	 */
+	public get blockSize(): number {
+		return 1 << (this.sizeExponent + 4);
+	}
+
+	/**
+	 * Indicates if there are more blocks following after this one.
+	 */
+	public get isLastBlock(): boolean {
+		const moreBlocks = (this.value & 0b1000) === 0b1000;
+		return !moreBlocks;
+	}
+	public set isLastBlock(value: boolean) {
+		const moreBlocks = !value;
+		// overwrite the 4th bit
+		this.value = (this.value & ~0b1000) | (moreBlocks ? 0b1000 : 0);
+	}
+
+	/**
+	 * The sequence number of this block.
+	 * When present in a request message, this determines the number of the block being requested
+	 * When present in a response message, this indicates the number of the provided block
+	 */
+	public get blockNumber(): number {
+		return this.value >>> 4;
+	}
+	public set blockNumber(value: number) {
+		// TODO: check if we need to update the value length
+		this.value = (value << 4) | (this.value & 0b1111);
+	}
+
+	/**
+	 * Returns the position of the first byte of this block in the complete message
+	 */
+	public get byteOffset(): number {
+		// from the spec:
+		// Implementation note:  As an implementation convenience, "(val & ~0xF)
+		// << (val & 7)", i.e., the option value with the last 4 bits masked
+		// out, shifted to the left by the value of SZX, gives the byte
+		// position of the first byte of the block being transferred.
+		return (this.value & ~0b1111) << (this.value & 0b111);
+	}
+
+	public toString(): string {
+		return `${this.name} (${this.code}): ${this.blockNumber}/${this.isLastBlock ? 0 : 1}/${this.blockSize}`;
 	}
 
 }
@@ -215,7 +324,7 @@ export class BinaryOption extends Option {
 
 	constructor(
 		code: number,
-		public readonly name: string,
+		public readonly name: OptionName,
 		public readonly repeatable: boolean,
 		public readonly minLength: number,
 		public readonly maxLength: number,
@@ -240,13 +349,17 @@ export class BinaryOption extends Option {
 
 	public static create(
 		code: number,
-		name: string,
+		name: OptionName,
 		repeatable: boolean,
 		minLength: number,
 		maxLength: number,
 		rawValue: Buffer,
 	): BinaryOption {
 		return new BinaryOption(code, name, repeatable, minLength, maxLength, rawValue);
+	}
+
+	public toString(): string {
+		return `${this.name} (${this.code}): 0x${this.rawValue.toString("hex")}`;
 	}
 
 }
@@ -258,7 +371,7 @@ export class StringOption extends Option {
 
 	constructor(
 		code: number,
-		public readonly name: string,
+		public readonly name: OptionName,
 		public readonly repeatable: boolean,
 		public readonly minLength: number,
 		public readonly maxLength: number,
@@ -283,13 +396,17 @@ export class StringOption extends Option {
 
 	public static create(
 		code: number,
-		name: string,
+		name: OptionName,
 		repeatable: boolean,
 		minLength: number,
 		maxLength: number,
 		rawValue: Buffer,
 	): StringOption {
 		return new StringOption(code, name, repeatable, minLength, maxLength, rawValue);
+	}
+
+	public toString(): string {
+		return `${this.name} (${this.code}): "${this.value}"`;
 	}
 
 }
@@ -301,7 +418,7 @@ const optionConstructors: {[code: string]: (raw: Buffer) => Option} = {};
 function defineOptionConstructor(
 	// tslint:disable-next-line:ban-types
 	constructor: Function,
-	code: number, name: string, repeatable: boolean,
+	code: number, name: OptionName, repeatable: boolean,
 	...args: any[],
 ): void {
 	optionConstructors[code] = optionConstructors[name] =
@@ -312,6 +429,9 @@ defineOptionConstructor(NumericOption, 7, "Uri-Port", false, 2);
 defineOptionConstructor(NumericOption, 12, "Content-Format", false, 2);
 defineOptionConstructor(NumericOption, 14, "Max-Age", false, 4);
 defineOptionConstructor(NumericOption, 17, "Accept", false, 2);
+defineOptionConstructor(BlockOption, 23, "Block2", false, 3);
+defineOptionConstructor(BlockOption, 27, "Block1", false, 3);
+defineOptionConstructor(NumericOption, 28, "Size2", false, 4);
 defineOptionConstructor(NumericOption, 60, "Size1", false, 4);
 defineOptionConstructor(BinaryOption, 1, "If-Match", true, 0, 8);
 defineOptionConstructor(BinaryOption, 4, "ETag", true, 1, 8);
@@ -324,6 +444,7 @@ defineOptionConstructor(StringOption, 20, "Location-Query", true, 0, 255);
 defineOptionConstructor(StringOption, 35, "Proxy-Uri", true, 1, 1034);
 defineOptionConstructor(StringOption, 39, "Proxy-Scheme", true, 1, 255);
 
+// tslint:disable:no-string-literal
 // tslint:disable-next-line:variable-name
 export const Options = Object.freeze({
 	UriHost: (hostname: string) => optionConstructors["Uri-Host"](Buffer.from(hostname)),
@@ -333,6 +454,37 @@ export const Options = Object.freeze({
 	LocationPath: (pathname: string) => optionConstructors["Location-Path"](Buffer.from(pathname)),
 
 	ContentFormat: (format: ContentFormats) => optionConstructors["Content-Format"](numberToBuffer(format)),
-	// tslint:disable-next-line:no-string-literal
 	Observe: (observe: boolean) => optionConstructors["Observe"](Buffer.from([observe ? 0 : 1])),
+
+	Block1: (num: number, isLast: boolean, size: number) => {
+		// Warning: we're not checking for a valid size here, do that in advance!
+		const sizeExp = Math.log2(size) - 4;
+		const value = (num << 4) | (isLast ? 0 : 0b1000) | (sizeExp & 0b111);
+		return optionConstructors["Block1"](numberToBuffer(value));
+	},
+	Block2: (num: number, isLast: boolean, size: number) => {
+		// Warning: we're not checking for a valid size here, do that in advance!
+		const sizeExp = Math.log2(size) - 4;
+		const value = (num << 4) | (isLast ? 0 : 0b1000) | (sizeExp & 0b111);
+		return optionConstructors["Block2"](numberToBuffer(value));
+	},
 });
+// tslint:enable:no-string-literal
+
+/**
+ * Searches for a single option in an array of options
+ * @param opts The options array to search for the option
+ * @param name The name of the option to search for
+ */
+export function findOption(opts: Option[], name: OptionName): Option {
+	return opts.find(o => o.name === name);
+}
+
+/**
+ * Searches for a repeatable option in an array of options
+ * @param opts The options array to search for the option
+ * @param name The name of the option to search for
+ */
+export function findOptions(opts: Option[], name: OptionName): Option[] {
+	return opts.filter(o => o.name === name);
+}

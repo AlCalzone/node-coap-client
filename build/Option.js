@@ -175,8 +175,78 @@ class NumericOption extends Option {
     static create(code, name, repeatable, maxLength, rawValue) {
         return new NumericOption(code, name, repeatable, maxLength, rawValue);
     }
+    toString() {
+        return `${this.name} (${this.code}): ${this.value}`;
+    }
 }
 exports.NumericOption = NumericOption;
+/**
+ * Specialized Message optionis for blockwise transfer
+ */
+class BlockOption extends NumericOption {
+    static create(code, name, repeatable, maxLength, rawValue) {
+        return new BlockOption(code, name, repeatable, maxLength, rawValue);
+    }
+    /**
+     * The size exponent of this block in the range 0..6
+     * The actual block size is calculated by 2**(4 + exp)
+     */
+    get sizeExponent() {
+        return this.value & 0b111;
+    }
+    set sizeExponent(value) {
+        if (value < 0 || value > 6) {
+            throw new Error("the size exponent must be in the range of 0..6");
+        }
+        // overwrite the last 3 bits
+        this.value = (this.value & ~0b111) | value;
+    }
+    /**
+     * The size of this block in bytes
+     */
+    get blockSize() {
+        return 1 << (this.sizeExponent + 4);
+    }
+    /**
+     * Indicates if there are more blocks following after this one.
+     */
+    get isLastBlock() {
+        const moreBlocks = (this.value & 0b1000) === 0b1000;
+        return !moreBlocks;
+    }
+    set isLastBlock(value) {
+        const moreBlocks = !value;
+        // overwrite the 4th bit
+        this.value = (this.value & ~0b1000) | (moreBlocks ? 0b1000 : 0);
+    }
+    /**
+     * The sequence number of this block.
+     * When present in a request message, this determines the number of the block being requested
+     * When present in a response message, this indicates the number of the provided block
+     */
+    get blockNumber() {
+        return this.value >>> 4;
+    }
+    set blockNumber(value) {
+        // TODO: check if we need to update the value length
+        this.value = (value << 4) | (this.value & 0b1111);
+    }
+    /**
+     * Returns the position of the first byte of this block in the complete message
+     */
+    get byteOffset() {
+        // from the spec:
+        // Implementation note:  As an implementation convenience, "(val & ~0xF)
+        // << (val & 7)", i.e., the option value with the last 4 bits masked
+        // out, shifted to the left by the value of SZX, gives the byte
+        // position of the first byte of the block being transferred.
+        return (this.value & ~0b1111) << (this.value & 0b111);
+    }
+    toString() {
+        return `${this.name} (${this.code}): ${this.blockNumber}/${this.isLastBlock ? 0 : 1}/${this.blockSize}`;
+    }
+}
+exports.BlockOption = BlockOption;
 /**
  * Specialized Message options for binary (and empty) content.
  */
@@ -205,6 +275,9 @@ class BinaryOption extends Option {
     }
     static create(code, name, repeatable, minLength, maxLength, rawValue) {
         return new BinaryOption(code, name, repeatable, minLength, maxLength, rawValue);
+    }
+    toString() {
+        return `${this.name} (${this.code}): 0x${this.rawValue.toString("hex")}`;
     }
 }
 exports.BinaryOption = BinaryOption;
@@ -237,6 +310,9 @@ class StringOption extends Option {
     static create(code, name, repeatable, minLength, maxLength, rawValue) {
         return new StringOption(code, name, repeatable, minLength, maxLength, rawValue);
     }
+    toString() {
+        return `${this.name} (${this.code}): "${this.value}"`;
+    }
 }
 exports.StringOption = StringOption;
 /**
@@ -254,6 +330,9 @@ defineOptionConstructor(NumericOption, 7, "Uri-Port", false, 2);
 defineOptionConstructor(NumericOption, 12, "Content-Format", false, 2);
 defineOptionConstructor(NumericOption, 14, "Max-Age", false, 4);
 defineOptionConstructor(NumericOption, 17, "Accept", false, 2);
+defineOptionConstructor(BlockOption, 23, "Block2", false, 3);
+defineOptionConstructor(BlockOption, 27, "Block1", false, 3);
+defineOptionConstructor(NumericOption, 28, "Size2", false, 4);
 defineOptionConstructor(NumericOption, 60, "Size1", false, 4);
 defineOptionConstructor(BinaryOption, 1, "If-Match", true, 0, 8);
 defineOptionConstructor(BinaryOption, 4, "ETag", true, 1, 8);
@@ -265,6 +344,7 @@ defineOptionConstructor(StringOption, 15, "Uri-Query", true, 0, 255);
 defineOptionConstructor(StringOption, 20, "Location-Query", true, 0, 255);
 defineOptionConstructor(StringOption, 35, "Proxy-Uri", true, 1, 1034);
 defineOptionConstructor(StringOption, 39, "Proxy-Scheme", true, 1, 255);
+// tslint:disable:no-string-literal
 // tslint:disable-next-line:variable-name
 exports.Options = Object.freeze({
     UriHost: (hostname) => optionConstructors["Uri-Host"](Buffer.from(hostname)),
@@ -272,6 +352,36 @@ exports.Options = Object.freeze({
     UriPath: (pathname) => optionConstructors["Uri-Path"](Buffer.from(pathname)),
     LocationPath: (pathname) => optionConstructors["Location-Path"](Buffer.from(pathname)),
     ContentFormat: (format) => optionConstructors["Content-Format"](numberToBuffer(format)),
-    // tslint:disable-next-line:no-string-literal
     Observe: (observe) => optionConstructors["Observe"](Buffer.from([observe ? 0 : 1])),
+    Block1: (num, isLast, size) => {
+        // Warning: we're not checking for a valid size here, do that in advance!
+        const sizeExp = Math.log2(size) - 4;
+        const value = (num << 4) | (isLast ? 0 : 0b1000) | (sizeExp & 0b111);
+        return optionConstructors["Block1"](numberToBuffer(value));
+    },
+    Block2: (num, isLast, size) => {
+        // Warning: we're not checking for a valid size here, do that in advance!
+        const sizeExp = Math.log2(size) - 4;
+        const value = (num << 4) | (isLast ? 0 : 0b1000) | (sizeExp & 0b111);
+        return optionConstructors["Block2"](numberToBuffer(value));
+    },
 });
+// tslint:enable:no-string-literal
+/**
+ * Searches for a single option in an array of options
+ * @param opts The options array to search for the option
+ * @param name The name of the option to search for
+ */
+function findOption(opts, name) {
+    return opts.find(o => o.name === name);
+}
+exports.findOption = findOption;
+/**
+ * Searches for a repeatable option in an array of options
+ * @param opts The options array to search for the option
+ * @param name The name of the option to search for
+ */
+function findOptions(opts, name) {
+    return opts.filter(o => o.name === name);
+}
+exports.findOptions = findOptions;

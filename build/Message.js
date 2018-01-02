@@ -49,6 +49,7 @@ exports.MessageCodes = Object.freeze({
         valid: new MessageCode(2, 3),
         changed: new MessageCode(2, 4),
         content: new MessageCode(2, 5),
+        continue: new MessageCode(2, 31),
     },
     clientError: {
         __major: 4,
@@ -59,6 +60,7 @@ exports.MessageCodes = Object.freeze({
         notFound: new MessageCode(4, 4),
         methodNotAllowed: new MessageCode(4, 5),
         notAcceptable: new MessageCode(4, 6),
+        requestEntityIncomplete: new MessageCode(4, 8),
         preconditionFailed: new MessageCode(4, 12),
         requestEntityTooLarge: new MessageCode(4, 13),
         unsupportedContentFormat: new MessageCode(4, 15),
@@ -164,6 +166,19 @@ class Message {
             this.payload.copy(ret, offset + 1);
         }
         return ret;
+    }
+    /**
+     * Checks if this message is part of a blockwise transfer
+     */
+    isPartialMessage() {
+        // start with the response option, since that's more likely
+        const block2option = Option_1.findOption(this.options, "Block2");
+        if (this.code.isResponse() && block2option != null)
+            return true;
+        const block1option = Option_1.findOption(this.options, "Block1");
+        if (this.code.isRequest() && block1option != null)
+            return true;
+        return false;
     }
 }
 exports.Message = Message;
