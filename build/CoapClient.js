@@ -670,7 +670,7 @@ class CoapClient {
         if (message == null)
             return;
         // only handle requests we haven't forgotten yet
-        if (!CoapClient.pendingRequestsByMsgID.hasOwnProperty(message.messageId))
+        if (!CoapClient.pendingRequestsByMsgID.has(message.messageId))
             return;
         debug(`request 0x${message.messageId.toString(16)}: concurrency changed => ${req.concurrency}`);
         if (req.concurrency === 0)
