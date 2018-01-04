@@ -145,6 +145,10 @@ To only reset connections and requests for a specific hostname, pass the hostnam
 
 ## Changelog
 
+#### 0.5.1 (2018-01-01)
+* (AlCalzone) Use `Map`s instead of dictionary objects
+* (AlCalzone) Remove excessive calls to the `concurrencyChanged` handlers
+
 #### 0.5.0 (2017-12-24)
 * (AlCalzone) Support receiving block-wise messages
 
