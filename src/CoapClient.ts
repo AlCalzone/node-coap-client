@@ -1074,7 +1074,7 @@ export class CoapClient {
 		CoapClient.isConnecting = true;
 
 		// Get the connection to establish
-		const originString = CoapClient.pendingConnections.keys()[0] as string;
+		const originString = CoapClient.pendingConnections.keys().next().value as string;
 		const origin = Origin.parse(originString);
 		const promise = CoapClient.pendingConnections.get(originString);
 		CoapClient.pendingConnections.delete(originString);
