@@ -393,8 +393,8 @@ class CoapClient {
         const oldMsgID = message.messageId;
         message.messageId = connection.lastMsgId = incrementMessageID(connection.lastMsgId);
         // this means we have to update the dictionaries aswell, so the request is still found
-        CoapClient.pendingRequestsByMsgID[message.messageId] = request;
-        delete CoapClient.pendingRequestsByMsgID[oldMsgID];
+        CoapClient.pendingRequestsByMsgID.set(message.messageId, request);
+        CoapClient.pendingRequestsByMsgID.delete(oldMsgID);
         // even if the original request was an observe, the partial requests are not
         message.options = message.options.filter(o => o.name !== "Observe");
         // Change the Block2 option, so the server knows which block to send
@@ -623,7 +623,7 @@ class CoapClient {
      * @param payload
      */
     static createMessage(type, code, messageId, token = null, options = [], // do we need this?
-        payload = null) {
+    payload = null) {
         return new Message_1.Message(0x01, type, code, messageId, token, options, payload);
     }
     /**

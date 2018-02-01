@@ -4,13 +4,14 @@
         "declaration": true,
         "module": "commonjs",
         "moduleResolution": "node",
-        "noEmitOnError": false,
-        "noImplicitAny": false,
+        "noEmitOnError": true,
+        "noImplicitAny": true,
         "outDir": "build/",
         "removeComments": false,
         "sourceMap": false,
         "inlineSourceMap": false,
         "target": "es2015",
-        "stripInternal": true
+        "stripInternal": true,
+        "strictPropertyInitialization": true,
     }
 }

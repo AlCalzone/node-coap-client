@@ -320,8 +320,8 @@ exports.StringOption = StringOption;
  */
 const optionConstructors = {};
 function defineOptionConstructor(
-    // tslint:disable-next-line:ban-types
-    constructor, code, name, repeatable, ...args) {
+// tslint:disable-next-line:ban-types
+constructor, code, name, repeatable, ...args) {
     optionConstructors[code] = optionConstructors[name] =
         constructor.create.bind(constructor, ...[code, name, repeatable, ...args]);
 }
