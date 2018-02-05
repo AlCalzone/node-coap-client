@@ -6,7 +6,7 @@ Clientside implementation of the CoAP protocol with DTLS support
 **Note:** If you want to talk to a Trådfri gateway, use https://github.com/AlCalzone/node-tradfri-client instead. That library builds on node-coap-client with some simplifying abstractions.
 
 ## Usage
-```
+```ts
 const coap = require("node-coap-client").CoapClient;
 ```
 The CoAP client provides the following public methods:
@@ -21,12 +21,12 @@ The CoAP client provides the following public methods:
 
 ### `setSecurityParams` - Provide the security parameters for a hostname
 In order to access secured resources, you must set the security parameters before firing off a request:
-```
+```ts
 coap.setSecurityParams(hostname /* string */, params /* SecurityParameters */);
 ```
 
 The SecurityParameters object looks as follows, for now only PSK key exchanges are supported
-```
+```ts
 {
     psk: { 
         "identity": "key"
@@ -37,16 +37,16 @@ The SecurityParameters object looks as follows, for now only PSK key exchanges a
 To talk to a Trådfri gateway, you need to use `Client_identity` to generate a new DTLS identity and then use that one for further communication. Again, please use [node-tradfri-client](https://github.com/AlCalzone/node-tradfri-client) instead.
 
 ### `tryToConnect` - Check if a given resource is available
-```
+```ts
 coap
     .tryToConnect(target /* string */)
-    .then(success /* boolean */ => /* do something with the result */)
+    .then((success /* boolean */) => { /* do something with the result */ })
     ;
 ```
 The promise resolves with `true` when the connection attempt was successful or `false` otherwise. On success, the connection is kept alive, so subsequent requests are sped up.
 
 ### `request` - Fire off a one-time request to a CoAP resource
-```
+```ts
 coap
     .request(
         resource /* string */,
@@ -61,7 +61,7 @@ coap
 The resource must be a valid CoAP resource URI, i.e. `coap(s)://hostname:port/path/path/path`.
 
 To customize the request behaviour, pass a `RequestOptions` object as the fourth parameter. In this case, you **have to** provide a payload or pass `null/undefined` as the third parameter. This object looks as follows, **all properties are optional** and default to `true`:
-```
+```ts
 {
     /** Whether to keep the socket connection alive. Speeds up subsequent requests */
     keepAlive: boolean
@@ -76,7 +76,7 @@ The `confirmable` option determines if a `CON` (confirmable) or a `NON` (non-con
 The `retransmit` options determines if the CoAP client will try to retransmit confirmable messages that are not acknowledged by the remote endpoint. When the maximum number of retransmits is reached without success, the request promise will be rejected.
 
 The `response` object looks as follows:
-```
+```ts
 {
     /* The code of this response. For a description see https://tools.ietf.org/html/rfc7252#section-12.1.2 */
     code: MessageCode;
@@ -96,7 +96,7 @@ The response code is of the type `MessageCode` which has the following propertie
 * `toString()`: Returns the string representation (e.g. `"2.05"`) as defined in the spec.
 
 ### `observe` - Subscribe to a CoAP resource and get notified on all updates
-```
+```ts
 coap
     .observe(
         resource /* string */,
@@ -112,19 +112,19 @@ coap
 See `request` for a description of most parameters. The `observe` method expects a callback function as the third parameter, which is called on the initial response and all updates to the resource. The callback gets passed a `response` object as the only parameter.
 
 ### `stopObserving` - Remove subscription to a CoAP resource
-```
+```ts
 coap.stopObserving(resource /* string */)
 ```
 You have to pass the same resource url you used to start observing earlier. After calling this, the observe callback is no longer invoked.
 
 ### `ping` - Ping a CoAP origin
-```
+```ts
 coap
     .ping(
         target /* string | url | Origin */,
         [timeout /* number, time in ms */]
     )
-    .then(success /* boolean */ => { /* handle response */})
+    .then((success /* boolean */) => { /* handle response */})
     ;
 ```
 Prefer this over custom ping constructs with full-blown requests! The `ping` method uses inexpensive CoAP pings to check the availability of an endpoint and automatically handles success/failure for you.
@@ -132,7 +132,7 @@ Prefer this over custom ping constructs with full-blown requests! The `ping` met
 The target must be a string or url of the form `coap(s)://hostname:port` or an instance of the `Origin` class. The optional timeout (default 5000ms) determines when a ping is deemed as failed.
 
 ### `reset` - Invalidate all connection states
-```
+```ts
 coap.reset(
     [originOrHostname /* string | Origin */]
 );
