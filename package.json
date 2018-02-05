@@ -1,6 +1,6 @@
 {
   "name": "node-coap-client",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Clientside implementation of the CoAP protocol with DTLS support.",
   "keywords": [
     "coap",
@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "debug": "^3.1.0",
-    "node-dtls-client": "^0.2.2"
+    "node-dtls-client": "^0.3.0"
   },
   "engines": {
     "node": ">= 6.0.0"

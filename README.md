@@ -145,6 +145,9 @@ To only reset connections and requests for a specific hostname, pass the hostnam
 
 ## Changelog
 
+#### 0.5.2 (2018-02-05)
+* (AlCalzone) Update DTLS library: Several errors in cipher suites fixed
+
 #### 0.5.1 (2018-01-01)
 * (AlCalzone) Use `Map`s instead of dictionary objects
 * (AlCalzone) Remove excessive calls to the `concurrencyChanged` handlers
