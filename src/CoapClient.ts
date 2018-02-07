@@ -1119,7 +1119,7 @@ export class CoapClient {
 	 * Establishes or retrieves a socket that can be used to send to and receive data from the given origin
 	 * @param origin - The other party
 	 */
-	private static async getSocket(origin: Origin): Promise<SocketWrapper> {
+	private static getSocket(origin: Origin): Promise<SocketWrapper> {
 
 		switch (origin.protocol) {
 			case "coap:":
