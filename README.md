@@ -145,6 +145,9 @@ To only reset connections and requests for a specific hostname, pass the hostnam
 
 ## Changelog
 
+#### 0.5.3 (2018-02-07)
+* (AlCalzone) Attempt to fix `TypeError: generator already running` in ioBroker.tradfri
+
 #### 0.5.2 (2018-02-05)
 * (AlCalzone) Update DTLS library: Several errors in cipher suites fixed
 
