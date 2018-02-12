@@ -1033,6 +1033,7 @@ export class CoapClient {
 			await CoapClient.getConnection(target);
 			return true;
 		} catch (e) {
+			debug(`tryToConnect(${target}) => failed with error: ${e}`);
 			return false;
 		}
 	}
