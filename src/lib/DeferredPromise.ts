@@ -1,6 +1,13 @@
 export interface DeferredPromise<T> extends Promise<T> {
 	resolve(value?: T | PromiseLike<T>): void;
+
+	reject(reason: Error): void;
 	reject(reason?: any): void;
+}
+
+function normalizeReason(reason?: any): any {
+	if (typeof reason === "string") return new Error(reason);
+	return reason;
 }
 
 export function createDeferredPromise<T>(): DeferredPromise<T> {
@@ -9,7 +16,7 @@ export function createDeferredPromise<T>(): DeferredPromise<T> {
 
 	const promise = new Promise<T>((resolve, reject) => {
 		res = resolve;
-		rej = reject;
+		rej = (reason?: any) => { reject(normalizeReason(reason)); };
 	}) as DeferredPromise<T>;
 
 	promise.resolve = res;

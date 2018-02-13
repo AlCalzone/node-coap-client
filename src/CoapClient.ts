@@ -468,7 +468,7 @@ export class CoapClient {
 		if (request.retransmit.counter > RETRANSMISSION_PARAMS.maxRetransmit) {
 			// if this is a one-time request, reject the response promise
 			if (request.promise !== null) {
-				(request.promise as DeferredPromise<CoapResponse>).reject(new Error("Retransmit counter exceeded"));
+				(request.promise as DeferredPromise<CoapResponse>).reject("Retransmit counter exceeded");
 			}
 			// then stop retransmitting and forget the request
 			CoapClient.forgetRequest({ request });
@@ -1131,7 +1131,7 @@ export class CoapClient {
 				const ret = createDeferredPromise<SocketWrapper>();
 				// try to find security parameters
 				if (!CoapClient.dtlsParams.has(origin.hostname)) {
-					return Promise.reject(`No security parameters given for the resource at ${origin.toString()}`);
+					return Promise.reject(new Error(`No security parameters given for the resource at ${origin.toString()}`));
 				}
 				const dtlsOpts: dtls.Options = Object.assign(
 					({

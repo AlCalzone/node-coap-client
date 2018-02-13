@@ -358,7 +358,7 @@ class CoapClient {
         if (request.retransmit.counter > RETRANSMISSION_PARAMS.maxRetransmit) {
             // if this is a one-time request, reject the response promise
             if (request.promise !== null) {
-                request.promise.reject(new Error("Retransmit counter exceeded"));
+                request.promise.reject("Retransmit counter exceeded");
             }
             // then stop retransmitting and forget the request
             CoapClient.forgetRequest({ request });
@@ -828,6 +828,7 @@ class CoapClient {
                 return true;
             }
             catch (e) {
+                debug(`tryToConnect(${target}) => failed with error: ${e}`);
                 return false;
             }
         });
@@ -923,7 +924,7 @@ class CoapClient {
                 const ret = DeferredPromise_1.createDeferredPromise();
                 // try to find security parameters
                 if (!CoapClient.dtlsParams.has(origin.hostname)) {
-                    return Promise.reject(`No security parameters given for the resource at ${origin.toString()}`);
+                    return Promise.reject(new Error(`No security parameters given for the resource at ${origin.toString()}`));
                 }
                 const dtlsOpts = Object.assign({
                     type: "udp4",
