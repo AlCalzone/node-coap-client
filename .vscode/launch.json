@@ -1,0 +1,28 @@
+{
+	// Verwendet IntelliSense zum Ermitteln möglicher Attribute.
+	// Zeigen Sie auf vorhandene Attribute, um die zugehörigen Beschreibungen anzuzeigen.
+	// Weitere Informationen finden Sie unter https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Run mocha",
+			"type": "node",
+			"request": "launch",
+			"program": "${workspaceRoot}/node_modules/mocha/bin/_mocha",
+			
+			"stopOnEntry": false,
+			"sourceMaps": true,
+			"args": [
+				"--require", "ts-node/register",
+				"--require", "source-map-support/register",
+				"src/**/*.test.ts",
+				"--no-timeouts"
+			],
+			"cwd": "${workspaceRoot}",
+			"runtimeExecutable": null,
+			"env": {
+				"NODE_ENV": "testing"
+			}
+		}
+	]
+}
