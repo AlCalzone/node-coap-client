@@ -13,5 +13,13 @@
         "target": "es2015",
         "stripInternal": true,
         "strictPropertyInitialization": true
-    }
+    },
+    "include": [
+        "src/**/*.ts"
+    ],
+    "exclude": [
+        "src/**/*.test.ts",
+        "build/**",
+        "node_modules/**"
+    ]
 }
