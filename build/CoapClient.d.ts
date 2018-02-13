@@ -157,11 +157,6 @@ export declare class CoapClient {
      * @param target The target to connect to. Must be a string, NodeJS.Url or Origin and has to contain the protocol, host and port.
      */
     static tryToConnect(target: string | nodeUrl.Url | Origin): Promise<boolean>;
-    /**
-     * Establishes a new or retrieves an existing connection to the given origin
-     * @param origin - The other party
-     */
-    private static getConnection(origin);
     private static workOffPendingConnections();
     /**
      * Establishes or retrieves a socket that can be used to send to and receive data from the given origin

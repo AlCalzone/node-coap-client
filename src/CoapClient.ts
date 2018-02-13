@@ -164,6 +164,20 @@ function validateBlockSize(size: number): boolean {
 	return true;
 }
 
+// Since coaps:// urls are parsed by the url package, the contained hostname is normalized.
+// This function applies the same transformation to any given hostname. Fixes the issue mentioned in #30
+/**
+ * Normalizes a hostname so it matches between `setSecurityParameters` and `connect`
+ * @param hostname The hostname to normalize
+ */
+function normalizeHostname(hostname: string): string {
+	// make sure noone gave us a full URI
+	if (!hostname.startsWith("coap://") && !hostname.startsWith("coaps://")) {
+		hostname = `coaps://${hostname}`;
+	}
+	return nodeUrl.parse(hostname).hostname;
+}
+
 /**
  * provides methods to access CoAP server resources
  */
@@ -192,6 +206,7 @@ export class CoapClient {
 	 * Sets the security params to be used for the given hostname
 	 */
 	public static setSecurityParams(hostname: string, params: SecurityParameters) {
+		hostname = normalizeHostname(hostname);
 		CoapClient.dtlsParams.set(hostname, params);
 	}
 
@@ -1041,8 +1056,9 @@ export class CoapClient {
 	/**
 	 * Establishes a new or retrieves an existing connection to the given origin
 	 * @param origin - The other party
+	 * @internal
 	 */
-	private static getConnection(origin: Origin): Promise<ConnectionInfo> {
+	public static getConnection(origin: Origin): Promise<ConnectionInfo> {
 		const originString = origin.toString();
 		if (CoapClient.connections.has(originString)) {
 			debug(`getConnection(${originString}) => found existing connection`);
@@ -1127,8 +1143,6 @@ export class CoapClient {
 				// simply return a normal udp socket
 				return Promise.resolve(new SocketWrapper(dgram.createSocket("udp4")));
 			case "coaps:":
-				// return a promise we resolve as soon as the connection is secured
-				const ret = createDeferredPromise<SocketWrapper>();
 				// try to find security parameters
 				if (!CoapClient.dtlsParams.has(origin.hostname)) {
 					return Promise.reject(new Error(`No security parameters given for the resource at ${origin.toString()}`));
@@ -1141,6 +1155,10 @@ export class CoapClient {
 					} as dtls.Options),
 					CoapClient.dtlsParams.get(origin.hostname),
 				);
+
+				// return a promise we resolve as soon as the connection is secured
+				const ret = createDeferredPromise<SocketWrapper>();
+
 				// try connecting
 				const onConnection = () => {
 					debug("successfully created socket for origin " + origin.toString());
