@@ -715,6 +715,8 @@ export class CoapClient {
 							// override the message payload with the assembled partial payload
 							// so the full payload gets returned to the listeners
 							coapMsg.payload = request.partialResponse.payload;
+							// also delete the partial response, so we don't get false information on later observe updates
+							request.partialResponse = null;
 						} else {
 							CoapClient.requestNextBlock(request);
 							responseIsComplete = false;
