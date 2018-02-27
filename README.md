@@ -145,6 +145,9 @@ To only reset connections and requests for a specific hostname, pass the hostnam
 
 ## Changelog
 
+#### 0.5.5 (2018-02-27)
+* (AlCalzone) Fix an error when requesting the next block in a blockwise transfer
+
 #### 0.5.4 (2018-02-13)
 * (AlCalzone) The hostname in `setSecurityParams` is now treated like the one given to `tryToConnect` (fixes the issue mentioned in #30)
 
