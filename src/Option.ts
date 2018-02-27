@@ -460,13 +460,13 @@ export const Options = Object.freeze({
 		// Warning: we're not checking for a valid size here, do that in advance!
 		const sizeExp = Math.log2(size) - 4;
 		const value = (num << 4) | (isLast ? 0 : 0b1000) | (sizeExp & 0b111);
-		return optionConstructors["Block1"](numberToBuffer(value));
+		return optionConstructors["Block1"](numberToBuffer(value)) as BlockOption;
 	},
 	Block2: (num: number, isLast: boolean, size: number) => {
 		// Warning: we're not checking for a valid size here, do that in advance!
 		const sizeExp = Math.log2(size) - 4;
 		const value = (num << 4) | (isLast ? 0 : 0b1000) | (sizeExp & 0b111);
-		return optionConstructors["Block2"](numberToBuffer(value));
+		return optionConstructors["Block2"](numberToBuffer(value)) as BlockOption;
 	},
 });
 // tslint:enable:no-string-literal

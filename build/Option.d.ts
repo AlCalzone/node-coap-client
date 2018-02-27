@@ -105,8 +105,8 @@ export declare const Options: Readonly<{
     LocationPath: (pathname: string) => Option;
     ContentFormat: (format: ContentFormats) => Option;
     Observe: (observe: boolean) => Option;
-    Block1: (num: number, isLast: boolean, size: number) => Option;
-    Block2: (num: number, isLast: boolean, size: number) => Option;
+    Block1: (num: number, isLast: boolean, size: number) => BlockOption;
+    Block2: (num: number, isLast: boolean, size: number) => BlockOption;
 }>;
 /**
  * Searches for a single option in an array of options

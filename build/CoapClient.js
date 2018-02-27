@@ -411,10 +411,19 @@ class CoapClient {
         CoapClient.pendingRequestsByMsgID.delete(oldMsgID);
         // even if the original request was an observe, the partial requests are not
         message.options = message.options.filter(o => o.name !== "Observe");
-        // Change the Block2 option, so the server knows which block to send
-        const block2Opt = Option_1.findOption(message.options, "Block2");
-        block2Opt.isLastBlock = true; // not sure if that's necessary, but better be safe
-        block2Opt.blockNumber++;
+        // Change (or create) the Block2 option, so the server knows which block to send
+        let block2Opt = Option_1.findOption(message.options, "Block2");
+        if (block2Opt == null) {
+            // respect the response options and request the next block
+            const { blockNumber, blockSize } = Option_1.findOption(request.partialResponse.options, "Block2");
+            block2Opt = Option_1.Options.Block2(blockNumber + 1, true, blockSize);
+            message.options.push(block2Opt);
+        }
+        else {
+            // we know the params to use, just request the next block
+            block2Opt.isLastBlock = true;
+            block2Opt.blockNumber++;
+        }
         // enable retransmission for this updated request
         request.retransmit = CoapClient.createRetransmissionInfo(message.messageId);
         // and enqueue it for sending
@@ -563,19 +572,16 @@ class CoapClient {
                         // Check if we expect more blocks
                         const blockOption = Option_1.findOption(coapMsg.options, "Block2"); // we know this is != null
                         // TODO: check for outdated partial responses
-                        // assemble the partial blocks
-                        if (request.partialResponse == null) {
-                            request.partialResponse = coapMsg;
+                        // remember the most recent message, but extend the stored buffer beforehand
+                        if (request.partialResponse != null) {
+                            // TODO: we should check if we got the correct fragment
+                            // https://github.com/AlCalzone/node-coap-client/issues/26
+                            coapMsg.payload = Buffer.concat([request.partialResponse.payload, coapMsg.payload]);
                         }
-                        else {
-                            // extend the stored buffer
-                            // TODO: we might have to check if we got the correct fragment
-                            request.partialResponse.payload = Buffer.concat([request.partialResponse.payload, coapMsg.payload]);
-                        }
+                        request.partialResponse = coapMsg;
                         if (blockOption.isLastBlock) {
-                            // override the message payload with the assembled partial payload
-                            // so the full payload gets returned to the listeners
-                            coapMsg.payload = request.partialResponse.payload;
+                            // delete the partial response, so we don't get false information on later observe updates
+                            request.partialResponse = null;
                         }
                         else {
                             CoapClient.requestNextBlock(request);
