@@ -40,10 +40,15 @@ To talk to a Trådfri gateway, you need to use `Client_identity` to generate a n
 ```ts
 coap
     .tryToConnect(target /* string */)
-    .then((success /* boolean */) => { /* do something with the result */ })
+    .then((result /* true or error code */) => { /* do something with the result */ })
     ;
 ```
-The promise resolves with `true` when the connection attempt was successful or `false` otherwise. On success, the connection is kept alive, so subsequent requests are sped up.
+The promise resolves with `true` (boolean) when the connection attempt was successful. The connection is then being kept alive, so subsequent requests are sped up. In case of failure, one of the following error codes is returned:
+* `"auth failed"`: The authentication failed, most likely due to a wrong PSK
+* `"timeout"`: The other party did not respond or the secure connection could not be established in time
+* `"error"`: Another unspecified error
+
+**NOTE:** This behavior was changed in v0.6.0 and is a breaking change!
 
 ### `request` - Fire off a one-time request to a CoAP resource
 ```ts
@@ -144,6 +149,9 @@ This causes all pending connections and requests to be dropped and clears all ob
 To only reset connections and requests for a specific hostname, pass the hostname or origin as the optional parameter.
 
 ## Changelog
+
+#### 0.6.0 (2018-03-15) - WARNING: BREAKING CHANGE!!!
+* (AlCalzone) `tryToConnect` now resolves with either `true` (boolean!) in case of success or one of the following error codes: `"auth failed"`, `"timeout"`, `"error"`
 
 #### 0.5.5 (2018-02-27)
 * (AlCalzone) Fix an error when requesting the next block in a blockwise transfer

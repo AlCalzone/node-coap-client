@@ -20,6 +20,7 @@ export interface CoapResponse {
     format: ContentFormats;
     payload?: Buffer;
 }
+export declare type ConnectionResult = true | "timeout" | "auth failed" | "error";
 export interface SecurityParameters {
     psk: {
         [identity: string]: string;
@@ -156,7 +157,7 @@ export declare class CoapClient {
      * Tries to establish a connection to the given target. Returns true on success, false otherwise.
      * @param target The target to connect to. Must be a string, NodeJS.Url or Origin and has to contain the protocol, host and port.
      */
-    static tryToConnect(target: string | nodeUrl.Url | Origin): Promise<boolean>;
+    static tryToConnect(target: string | nodeUrl.Url | Origin): Promise<ConnectionResult>;
     private static workOffPendingConnections();
     /**
      * Establishes or retrieves a socket that can be used to send to and receive data from the given origin

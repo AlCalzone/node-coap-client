@@ -39,6 +39,8 @@ export interface CoapResponse {
 	payload?: Buffer;
 }
 
+export type ConnectionResult = true | "timeout" | "auth failed" | "error";
+
 function urlToString(url: nodeUrl.Url): string {
 	return `${url.protocol}//${url.hostname}:${url.port}${url.pathname}`;
 }
@@ -1042,7 +1044,7 @@ export class CoapClient {
 	 * Tries to establish a connection to the given target. Returns true on success, false otherwise.
 	 * @param target The target to connect to. Must be a string, NodeJS.Url or Origin and has to contain the protocol, host and port.
 	 */
-	public static async tryToConnect(target: string | nodeUrl.Url | Origin): Promise<boolean> {
+	public static async tryToConnect(target: string | nodeUrl.Url | Origin): Promise<ConnectionResult> {
 		// parse/convert url
 		if (typeof target === "string") {
 			target = Origin.parse(target);
@@ -1056,7 +1058,15 @@ export class CoapClient {
 			return true;
 		} catch (e) {
 			debug(`tryToConnect(${target}) => failed with error: ${e}`);
-			return false;
+			if (/bad_record_mac/.test(e.message)) {
+				// as of DTLSv1.2 this means we provided invalid credentials
+				return "auth failed";
+			} else if (/dtls handshake timed out/i.test(e.message)) {
+				// The other party could not be reached or has no DTLS server running
+				return "timeout";
+			} else {
+				return "error"; // no clue
+			}
 		}
 	}
 

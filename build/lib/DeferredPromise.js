@@ -10,7 +10,7 @@ function createDeferredPromise() {
     let rej;
     const promise = new Promise((resolve, reject) => {
         res = resolve;
-        rej = (reason) => { reject(normalizeReason(reason)); };
+        rej = (reason) => reject(normalizeReason(reason));
     });
     promise.resolve = res;
     promise.reject = rej;

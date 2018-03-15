@@ -849,7 +849,17 @@ class CoapClient {
             }
             catch (e) {
                 debug(`tryToConnect(${target}) => failed with error: ${e}`);
-                return false;
+                if (/bad_record_mac/.test(e.message)) {
+                    // as of DTLSv1.2 this means we provided invalid credentials
+                    return "auth failed";
+                }
+                else if (/dtls handshake timed out/i.test(e.message)) {
+                    // The other party could not be reached or has no DTLS server running
+                    return "timeout";
+                }
+                else {
+                    return "error"; // no clue
+                }
             }
         });
     }

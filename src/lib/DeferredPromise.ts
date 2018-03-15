@@ -16,7 +16,7 @@ export function createDeferredPromise<T>(): DeferredPromise<T> {
 
 	const promise = new Promise<T>((resolve, reject) => {
 		res = resolve;
-		rej = (reason?: any) => { reject(normalizeReason(reason)); };
+		rej = (reason?: any) => reject(normalizeReason(reason));
 	}) as DeferredPromise<T>;
 
 	promise.resolve = res;
