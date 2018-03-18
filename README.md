@@ -150,6 +150,9 @@ To only reset connections and requests for a specific hostname, pass the hostnam
 
 ## Changelog
 
+#### 0.6.1 (2018-03-18)
+* (AlCalzone) Treat `"ENOTFOUND"` as `"timeout"` instead of the generic `"error"` for connection purposes
+
 #### 0.6.0 (2018-03-15) - WARNING: BREAKING CHANGE!!!
 * (AlCalzone) `tryToConnect` now resolves with either `true` (boolean!) in case of success or one of the following error codes: `"auth failed"`, `"timeout"`, `"error"`
 

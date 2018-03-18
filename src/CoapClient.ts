@@ -1061,7 +1061,7 @@ export class CoapClient {
 			if (/bad_record_mac/.test(e.message)) {
 				// as of DTLSv1.2 this means we provided invalid credentials
 				return "auth failed";
-			} else if (/dtls handshake timed out/i.test(e.message)) {
+			} else if (/(dtls handshake timed out|enotfound)/i.test(e.message)) {
 				// The other party could not be reached or has no DTLS server running
 				return "timeout";
 			} else {
