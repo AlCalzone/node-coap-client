@@ -150,6 +150,9 @@ To only reset connections and requests for a specific hostname, pass the hostnam
 
 ## Changelog
 
+#### 0.6.2 (2018-04-27)
+* (AlCalzone) Add support for NodeJS 10
+
 #### 0.6.1 (2018-03-18)
 * (AlCalzone) Treat `"ENOTFOUND"` as `"timeout"` instead of the generic `"error"` for connection purposes
 
