@@ -150,6 +150,9 @@ To only reset connections and requests for a specific hostname, pass the hostnam
 
 ## Changelog
 
+#### 0.7.0 (2018-05-01)
+* (AlCalzone) **Potentially breaking change:** Update `node-dtls-client` library.
+
 #### 0.6.2 (2018-04-27)
 * (AlCalzone) Add support for NodeJS 10
 
