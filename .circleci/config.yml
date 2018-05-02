@@ -12,13 +12,13 @@ node6: &node6
 node8: &node8
   working_directory: &workdir_node8 ~/node-coap-client/node8
   docker:
-    - image: circleci/node:8
+    - image: alcalzone/circleci_node8-npm6:1.0.0
 
 # use "latest" for lint and publish
 latest: &latest
   working_directory: &workdir_latest ~/node-coap-client/latest
   docker:
-    - image: circleci/node:10
+    - image: alcalzone/circleci_node10-npm6:1.0.0
 
 # some job filters
 tags_and_branches: &tags_and_branches
@@ -90,10 +90,6 @@ jobs:
           - v2-npm-deps-{{ .Branch }}-node8-{{ checksum "package-lock.json" }}
 
       - run:
-          name: Update npm
-          command: npmv=$(echo $(npm -v) | head -c 1); if [ "$npmv" -lt "6" ]; then sudo npm i -g npm; else echo "Node.js Docker Team finally decided to include npm v6+ in latest image; you can remove this script now"; fi
-
-      - run:
           name: Install Dependencies
           command: npm ci
 
@@ -117,10 +113,6 @@ jobs:
       - restore_cache:
           keys:
           - v2-npm-deps-{{ .Branch }}-latest-{{ checksum "package-lock.json" }}
-
-      - run:
-          name: Update npm
-          command: npmv=$(echo $(npm -v) | head -c 1); if [ "$npmv" -lt "6" ]; then sudo npm i -g npm; else echo "Node.js Docker Team finally decided to include npm v6+ in latest image; you can remove this script now"; fi
 
       - run:
           name: Install Dependencies
