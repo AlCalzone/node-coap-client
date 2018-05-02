@@ -12,13 +12,13 @@ node6: &node6
 node8: &node8
   working_directory: &workdir_node8 ~/node-coap-client/node8
   docker:
-    - image: circleci/node:8
+    - image: alcalzone/circleci_node8-npm6:1.0.0
 
 # use "latest" for lint and publish
 latest: &latest
   working_directory: &workdir_latest ~/node-coap-client/latest
   docker:
-    - image: circleci/node:10
+    - image: alcalzone/circleci_node10-npm6:1.0.0
 
 # some job filters
 tags_and_branches: &tags_and_branches
