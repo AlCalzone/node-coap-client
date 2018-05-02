@@ -89,12 +89,12 @@ jobs:
           keys:
           - v1-dependencies-node8-{{ checksum "package.json" }}
 
-      - run:
-          name: Remove unnecessary Dependencies
-          command: npm ls || true ; npm prune
+    #   - run:
+    #       name: Remove unnecessary Dependencies
+    #       command: npm ls || true ; npm prune
       - run:
           name: Install Dependencies
-          command: npm install
+          command: npm ci
 
       - save_cache:
           paths:
@@ -117,12 +117,12 @@ jobs:
           keys:
           - v1-dependencies-latest-{{ checksum "package.json" }}
 
-      - run:
-          name: Remove unnecessary Dependencies
-          command: npm ls || true ; npm prune
+    #   - run:
+    #       name: Remove unnecessary Dependencies
+    #       command: npm ls || true ; npm prune
       - run:
           name: Install Dependencies
-          command: npm install
+          command: npm ci
 
       - save_cache:
           paths:
