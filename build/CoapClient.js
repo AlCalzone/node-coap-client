@@ -250,6 +250,16 @@ class CoapClient {
             msgOptions.push(...pathParts.map(part => Option_1.Options.UriPath(part)));
             // [12] content format
             msgOptions.push(Option_1.Options.ContentFormat(ContentFormats_1.ContentFormats.application_json));
+            // [15] query
+            let query = url.query || "";
+            while (query.startsWith("?")) {
+                query = query.slice(1);
+            }
+            while (query.endsWith("&")) {
+                query = query.slice(0, -1);
+            }
+            const queryParts = query.split("&");
+            msgOptions.push(...queryParts.map(part => Option_1.Options.UriQuery(part)));
             // [23] Block2 (preferred response block size)
             if (options.preferredBlockSize != null) {
                 msgOptions.push(Option_1.Options.Block2(0, true, options.preferredBlockSize));
@@ -305,7 +315,7 @@ class CoapClient {
             if (typeof target === "string") {
                 target = Origin_1.Origin.parse(target);
             }
-            else if (!(target instanceof Origin_1.Origin)) {
+            else if (!(target instanceof Origin_1.Origin)) { // is a nodeUrl
                 target = Origin_1.Origin.fromUrl(target);
             }
             // retrieve or create the connection we're going to use
@@ -469,6 +479,16 @@ class CoapClient {
             msgOptions.push(...pathParts.map(part => Option_1.Options.UriPath(part)));
             // [12] content format
             msgOptions.push(Option_1.Options.ContentFormat(ContentFormats_1.ContentFormats.application_json));
+            // [15] query
+            let query = url.query || "";
+            while (query.startsWith("?")) {
+                query = query.slice(1);
+            }
+            while (query.endsWith("&")) {
+                query = query.slice(0, -1);
+            }
+            const queryParts = query.split("&");
+            msgOptions.push(...queryParts.map(part => Option_1.Options.UriQuery(part)));
             // In contrast to requests, we don't work with a deferred promise when observing
             // Instead, we invoke a callback for *every* response.
             // create the message we're going to send
@@ -529,7 +549,7 @@ class CoapClient {
                         break;
                     case Message_1.MessageType.RST:
                         if (request.originalMessage.type === Message_1.MessageType.CON &&
-                            request.originalMessage.code === Message_1.MessageCodes.empty) {
+                            request.originalMessage.code === Message_1.MessageCodes.empty) { // this message was a ping (empty CON, answered by RST)
                             // resolve the promise
                             debug(`received response to ping with ID 0x${coapMsg.messageId.toString(16)}`);
                             request.promise.resolve();
@@ -618,7 +638,7 @@ class CoapClient {
                         CoapClient.send(request.connection, ACK, "immediate");
                     }
                 }
-                else {
+                else { // request == null
                     // no request found for this token, send RST so the server stops sending
                     // try to find the connection that belongs to this origin
                     const originString = origin.toString();
@@ -839,7 +859,7 @@ class CoapClient {
             if (typeof target === "string") {
                 target = Origin_1.Origin.parse(target);
             }
-            else if (!(target instanceof Origin_1.Origin)) {
+            else if (!(target instanceof Origin_1.Origin)) { // is a nodeUrl
                 target = Origin_1.Origin.fromUrl(target);
             }
             // retrieve or create the connection we're going to use

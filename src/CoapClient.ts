@@ -345,6 +345,14 @@ export class CoapClient {
 		);
 		// [12] content format
 		msgOptions.push(Options.ContentFormat(ContentFormats.application_json));
+		// [15] query
+		let query: string = url.query || "";
+		while (query.startsWith("?")) { query = query.slice(1); }
+		while (query.endsWith("&")) { query = query.slice(0, -1); }
+		const queryParts = query.split("&");
+		msgOptions.push(
+			...queryParts.map(part => Options.UriQuery(part)),
+		);
 		// [23] Block2 (preferred response block size)
 		if (options.preferredBlockSize != null) {
 			msgOptions.push(Options.Block2(0, true, options.preferredBlockSize));
@@ -597,6 +605,14 @@ export class CoapClient {
 		);
 		// [12] content format
 		msgOptions.push(Options.ContentFormat(ContentFormats.application_json));
+		// [15] query
+		let query: string = url.query || "";
+		while (query.startsWith("?")) { query = query.slice(1); }
+		while (query.endsWith("&")) { query = query.slice(0, -1); }
+		const queryParts = query.split("&");
+		msgOptions.push(
+			...queryParts.map(part => Options.UriQuery(part)),
+		);
 
 		// In contrast to requests, we don't work with a deferred promise when observing
 		// Instead, we invoke a callback for *every* response.

@@ -450,6 +450,7 @@ export const Options = Object.freeze({
 	UriHost: (hostname: string) => optionConstructors["Uri-Host"](Buffer.from(hostname)),
 	UriPort: (port: number) => optionConstructors["Uri-Port"](numberToBuffer(port)),
 	UriPath: (pathname: string) => optionConstructors["Uri-Path"](Buffer.from(pathname)),
+	UriQuery: (query: string) => optionConstructors["Uri-Query"](Buffer.from(query)),
 
 	LocationPath: (pathname: string) => optionConstructors["Location-Path"](Buffer.from(pathname)),
 

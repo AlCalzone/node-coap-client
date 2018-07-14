@@ -102,6 +102,7 @@ export declare const Options: Readonly<{
     UriHost: (hostname: string) => Option;
     UriPort: (port: number) => Option;
     UriPath: (pathname: string) => Option;
+    UriQuery: (query: string) => Option;
     LocationPath: (pathname: string) => Option;
     ContentFormat: (format: ContentFormats) => Option;
     Observe: (observe: boolean) => Option;

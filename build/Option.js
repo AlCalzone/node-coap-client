@@ -71,6 +71,7 @@ class Option {
             case 15:
                 throw new Error("invalid option format");
             default:
+            // all good
         }
         // handle special cases for the length
         switch (length) {
@@ -85,6 +86,7 @@ class Option {
             case 15:
                 throw new Error("invalid option format");
             default:
+            // all good
         }
         const rawValue = Buffer.from(buf.slice(dataStart, dataStart + length));
         const code = prevCode + delta;
@@ -111,7 +113,7 @@ class Option {
         const ret = Buffer.allocUnsafe(totalLength);
         let dataStart = 1;
         // check if we need to split the delta in 2 parts
-        if (delta < 13) {
+        if (delta < 13) { /* all good */
         }
         else if (delta < 269) {
             extraDelta = delta - 13;
@@ -126,7 +128,7 @@ class Option {
             dataStart += 2;
         }
         // check if we need to split the length in 2 parts
-        if (length < 13) {
+        if (length < 13) { /* all good */
         }
         else if (length < 269) {
             extraLength = length - 13;
@@ -350,6 +352,7 @@ exports.Options = Object.freeze({
     UriHost: (hostname) => optionConstructors["Uri-Host"](Buffer.from(hostname)),
     UriPort: (port) => optionConstructors["Uri-Port"](numberToBuffer(port)),
     UriPath: (pathname) => optionConstructors["Uri-Path"](Buffer.from(pathname)),
+    UriQuery: (query) => optionConstructors["Uri-Query"](Buffer.from(query)),
     LocationPath: (pathname) => optionConstructors["Location-Path"](Buffer.from(pathname)),
     ContentFormat: (format) => optionConstructors["Content-Format"](numberToBuffer(format)),
     Observe: (observe) => optionConstructors["Observe"](Buffer.from([observe ? 0 : 1])),
