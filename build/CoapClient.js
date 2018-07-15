@@ -11,6 +11,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const crypto = require("crypto");
 const dgram = require("dgram");
 const node_dtls_client_1 = require("node-dtls-client");
+const querystring = require("querystring");
 const nodeUrl = require("url");
 const ContentFormats_1 = require("./ContentFormats");
 const DeferredPromise_1 = require("./lib/DeferredPromise");
@@ -251,15 +252,19 @@ class CoapClient {
             // [12] content format
             msgOptions.push(Option_1.Options.ContentFormat(ContentFormats_1.ContentFormats.application_json));
             // [15] query
-            let query = url.query || "";
-            while (query.startsWith("?")) {
-                query = query.slice(1);
+            if (url.query != null) {
+                // unescape and split the querystring
+                const queryParts = querystring.parse(url.query);
+                for (const key of Object.keys(queryParts)) {
+                    const part = queryParts[key];
+                    if (Array.isArray(part)) {
+                        msgOptions.push(...part.map(value => Option_1.Options.UriQuery(`${key}=${value}`)));
+                    }
+                    else {
+                        msgOptions.push(Option_1.Options.UriQuery(`${key}=${part}`));
+                    }
+                }
             }
-            while (query.endsWith("&")) {
-                query = query.slice(0, -1);
-            }
-            const queryParts = query.split("&");
-            msgOptions.push(...queryParts.map(part => Option_1.Options.UriQuery(part)));
             // [23] Block2 (preferred response block size)
             if (options.preferredBlockSize != null) {
                 msgOptions.push(Option_1.Options.Block2(0, true, options.preferredBlockSize));

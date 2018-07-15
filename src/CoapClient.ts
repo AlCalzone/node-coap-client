@@ -1,6 +1,7 @@
 import * as crypto from "crypto";
 import * as dgram from "dgram";
 import { dtls } from "node-dtls-client";
+import * as querystring from "querystring";
 import * as nodeUrl from "url";
 import { ContentFormats } from "./ContentFormats";
 import { createDeferredPromise, DeferredPromise } from "./lib/DeferredPromise";
@@ -346,13 +347,20 @@ export class CoapClient {
 		// [12] content format
 		msgOptions.push(Options.ContentFormat(ContentFormats.application_json));
 		// [15] query
-		let query: string = url.query || "";
-		while (query.startsWith("?")) { query = query.slice(1); }
-		while (query.endsWith("&")) { query = query.slice(0, -1); }
-		const queryParts = query.split("&");
-		msgOptions.push(
-			...queryParts.map(part => Options.UriQuery(part)),
-		);
+		if (url.query != null) {
+			// unescape and split the querystring
+			const queryParts = querystring.parse(url.query) as Record<string, string | string[]>;
+			for (const key of Object.keys(queryParts)) {
+				const part = queryParts[key];
+				if (Array.isArray(part)) {
+					msgOptions.push(
+						...part.map(value => Options.UriQuery(`${key}=${value}`)),
+					);
+				} else {
+					msgOptions.push(Options.UriQuery(`${key}=${part}`));
+				}
+			}
+		}
 		// [23] Block2 (preferred response block size)
 		if (options.preferredBlockSize != null) {
 			msgOptions.push(Options.Block2(0, true, options.preferredBlockSize));

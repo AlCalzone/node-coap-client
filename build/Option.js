@@ -321,12 +321,14 @@ exports.StringOption = StringOption;
  * all defined assignments for instancing Options
  */
 const optionConstructors = {};
-function defineOptionConstructor(
-// tslint:disable-next-line:ban-types
-constructor, code, name, repeatable, ...args) {
+// tslint:disable:ban-types
+// tslint:disable:trailing-comma
+function defineOptionConstructor(constructor, code, name, repeatable, ...args) {
     optionConstructors[code] = optionConstructors[name] =
         constructor.create.bind(constructor, ...[code, name, repeatable, ...args]);
 }
+// tslint:enable:ban-types
+// tslint:enable:trailing-comma
 defineOptionConstructor(NumericOption, 6, "Observe", false, 3);
 defineOptionConstructor(NumericOption, 7, "Uri-Port", false, 2);
 defineOptionConstructor(NumericOption, 12, "Content-Format", false, 2);
