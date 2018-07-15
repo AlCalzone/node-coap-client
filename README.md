@@ -153,6 +153,9 @@ To only reset connections and requests for a specific hostname, pass the hostnam
 
 ## Changelog
 
+#### __WORK IN PROGRESS__
+* (mkovatsc) Add support for the Uri-Query option
+
 #### 0.7.2 (2018-05-01)
 * (AlCalzone) **Potentially breaking change:** Update `node-dtls-client` library.
 
