@@ -20,7 +20,7 @@ export interface CoapResponse {
     format: ContentFormats;
     payload?: Buffer;
 }
-export declare type ConnectionResult = true | "timeout" | "auth failed" | "error";
+export declare type ConnectionResult = true | "timeout" | "auth failed" | Error;
 export interface SecurityParameters {
     psk: {
         [identity: string]: string;

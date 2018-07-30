@@ -43,15 +43,17 @@ To talk to a Trådfri gateway, you need to use `Client_identity` to generate a n
 ```ts
 coap
     .tryToConnect(target /* string */)
-    .then((result /* true or error code */) => { /* do something with the result */ })
+    .then((result /* true or error code or Error instance */) => {
+        // do something with the result */ 
+    })
     ;
 ```
-The promise resolves with `true` (boolean) when the connection attempt was successful. The connection is then being kept alive, so subsequent requests are sped up. In case of failure, one of the following error codes is returned:
+The promise resolves with `true` (boolean) when the connection attempt was successful. The connection is then being kept alive, so subsequent requests are sped up. In case of failure, either an `Error` instance or one of the following error codes is returned:
 * `"auth failed"`: The authentication failed, most likely due to a wrong PSK
 * `"timeout"`: The other party did not respond or the secure connection could not be established in time
-* `"error"`: Another unspecified error
 
-**NOTE:** This behavior was changed in v0.6.0 and is a breaking change!
+**NOTE:** This behavior was changed in v0.6.0 and is a breaking change!  
+**NOTE:** Starting with v1.0.0, the `"error"` response code is replaced with the original `Error` instance. This method does not throw/reject but rather **return** the error.
 
 ### `request` - Fire off a one-time request to a CoAP resource
 ```ts
@@ -155,6 +157,7 @@ To only reset connections and requests for a specific hostname, pass the hostnam
 
 #### __WORK IN PROGRESS__
 * (mkovatsc) Add support for the Uri-Query option
+* (AlCalzone) `tryToConnect` no longer returns `"error"` when an unexpected error occured but instead **returns** the `Error` instance.
 
 #### 0.7.2 (2018-05-01)
 * (AlCalzone) **Potentially breaking change:** Update `node-dtls-client` library.

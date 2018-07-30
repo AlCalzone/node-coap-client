@@ -883,7 +883,7 @@ class CoapClient {
                     return "timeout";
                 }
                 else {
-                    return "error"; // no clue
+                    return e;
                 }
             }
         });

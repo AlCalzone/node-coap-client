@@ -40,7 +40,7 @@ export interface CoapResponse {
 	payload?: Buffer;
 }
 
-export type ConnectionResult = true | "timeout" | "auth failed" | "error";
+export type ConnectionResult = true | "timeout" | "auth failed" | Error;
 
 function urlToString(url: nodeUrl.Url): string {
 	return `${url.protocol}//${url.hostname}:${url.port}${url.pathname}`;
@@ -1089,7 +1089,7 @@ export class CoapClient {
 				// The other party could not be reached or has no DTLS server running
 				return "timeout";
 			} else {
-				return "error"; // no clue
+				return e;
 			}
 		}
 	}

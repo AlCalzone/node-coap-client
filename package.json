@@ -23,6 +23,7 @@
     "@types/debug": "0.0.30",
     "@types/mocha": "^5.2.0",
     "@types/node": "^6.0.88",
+    "@types/yargs": "^11.1.1",
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
     "coveralls": "^3.0.1",
