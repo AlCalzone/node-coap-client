@@ -11,8 +11,7 @@
         "sourceMap": false,
         "inlineSourceMap": false,
         "target": "es2015",
-        "stripInternal": true,
-        "strictPropertyInitialization": true
+        "stripInternal": true
     },
     "include": [
         "src/**/*.ts"
