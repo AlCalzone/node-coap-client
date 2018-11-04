@@ -155,6 +155,9 @@ To only reset connections and requests for a specific hostname, pass the hostnam
 
 ## Changelog
 
+#### __WORK IN PROGRESS__
+* (AlCalzone) Rework the installation procedure. `node-aead-crypto` is now optional.
+
 #### 1.0.0 (2018-07-30)
 * (mkovatsc) Add support for the Uri-Query option
 * (AlCalzone) `tryToConnect` no longer returns `"error"` when an unexpected error occured but instead **returns** the `Error` instance.
