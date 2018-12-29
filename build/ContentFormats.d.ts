@@ -4,5 +4,5 @@ export declare enum ContentFormats {
     application_xml = 41,
     application_octetStream = 42,
     application_exi = 47,
-    application_json = 50,
+    application_json = 50
 }

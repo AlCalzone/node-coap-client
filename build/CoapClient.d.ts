@@ -53,7 +53,7 @@ export declare class CoapClient {
      * @param defaults The default options to use for requests when no options are given
      */
     static setDefaultRequestOptions(defaults: RequestOptions): void;
-    private static getRequestOptions(options?);
+    private static getRequestOptions;
     /**
      * Closes and forgets about connections, useful if DTLS session is reset on remote end
      * @param originOrHostname - Origin (protocol://hostname:port) or Hostname to reset,
@@ -72,7 +72,7 @@ export declare class CoapClient {
      * Creates a RetransmissionInfo to use for retransmission of lost packets
      * @param messageId The message id of the corresponding request
      */
-    private static createRetransmissionInfo(messageId);
+    private static createRetransmissionInfo;
     /**
      * Pings a CoAP endpoint to check if it is alive
      * @param target - The target to be pinged. Must be a string, NodeJS.Url or Origin and has to contain the protocol, host and port.
@@ -83,14 +83,14 @@ export declare class CoapClient {
      * Re-Sends a message in case it got lost
      * @param msgID
      */
-    private static retransmit(msgID);
-    private static getRetransmissionInterval();
-    private static stopRetransmission(request);
+    private static retransmit;
+    private static getRetransmissionInterval;
+    private static stopRetransmission;
     /**
      * When the server responds with block-wise responses, this requests the next block.
      * @param request The original request which resulted in a block-wise response
      */
-    private static requestNextBlock(request);
+    private static requestNextBlock;
     /**
      * Observes a CoAP resource
      * @param url - The URL to be requested. Must start with coap:// or coaps://
@@ -103,7 +103,7 @@ export declare class CoapClient {
      * Stops observation of the given url
      */
     static stopObserving(url: string | nodeUrl.Url): void;
-    private static onMessage(origin, message, rinfo);
+    private static onMessage;
     /**
      * Creates a message with the given parameters
      * @param type
@@ -113,21 +113,21 @@ export declare class CoapClient {
      * @param options
      * @param payload
      */
-    private static createMessage(type, code, messageId, token?, options?, payload?);
+    private static createMessage;
     /**
      * Send a CoAP message to the given endpoint
      * @param connection The connection to send the message on
      * @param message The message to send
      * @param highPriority Whether the message should be prioritized
      */
-    private static send(connection, message, priority?);
-    private static workOffSendQueue();
+    private static send;
+    private static workOffSendQueue;
     /**
      * Does the actual sending of a message and starts concurrency/retransmission handling
      */
-    private static doSend(connection, request, message);
+    private static doSend;
     /** Calculates the current concurrency, i.e. how many parallel requests are being handled */
-    private static calculateConcurrency();
+    private static calculateConcurrency;
     /**
      * Remembers a request for resending lost messages and tracking responses and updates
      * @param request
@@ -135,7 +135,7 @@ export declare class CoapClient {
      * @param byMsgID
      * @param byToken
      */
-    private static rememberRequest(request, byUrl?, byMsgID?, byToken?);
+    private static rememberRequest;
     /**
      * Forgets a pending request
      * @param request
@@ -143,25 +143,25 @@ export declare class CoapClient {
      * @param byMsgID
      * @param byToken
      */
-    private static forgetRequest(which);
+    private static forgetRequest;
     /**
      * Finds a request we have remembered by one of its properties
      * @param which
      */
-    private static findRequest(which);
+    private static findRequest;
     /**
      * Finds all pending requests of a given origin
      */
-    private static findRequestsByOrigin(origin);
+    private static findRequestsByOrigin;
     /**
      * Tries to establish a connection to the given target. Returns true on success, false otherwise.
      * @param target The target to connect to. Must be a string, NodeJS.Url or Origin and has to contain the protocol, host and port.
      */
     static tryToConnect(target: string | nodeUrl.Url | Origin): Promise<ConnectionResult>;
-    private static workOffPendingConnections();
+    private static workOffPendingConnections;
     /**
      * Establishes or retrieves a socket that can be used to send to and receive data from the given origin
      * @param origin - The other party
      */
-    private static getSocket(origin);
+    private static getSocket;
 }

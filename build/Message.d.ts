@@ -4,7 +4,7 @@ export declare enum MessageType {
     CON = 0,
     NON = 1,
     ACK = 2,
-    RST = 3,
+    RST = 3
 }
 export declare class MessageCode {
     readonly major: number;
