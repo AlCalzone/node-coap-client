@@ -155,6 +155,9 @@ To only reset connections and requests for a specific hostname, pass the hostnam
 
 ## Changelog
 
+#### 1.0.2 (2018-12-29)
+* (chrisEff) Update dependencies
+
 #### 1.0.1 (2018-11-04)
 * (AlCalzone) Rework the installation procedure. `node-aead-crypto` is now optional.
 
