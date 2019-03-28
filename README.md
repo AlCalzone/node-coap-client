@@ -4,7 +4,7 @@ Clientside implementation of the CoAP protocol with DTLS support
 [![node](https://img.shields.io/node/v/node-coap-client.svg) ![npm](https://img.shields.io/npm/v/node-coap-client.svg)](https://www.npmjs.com/package/node-coap-client)
 
 [![Build Status](https://img.shields.io/circleci/project/github/AlCalzone/node-coap-client.svg)](https://circleci.com/gh/AlCalzone/node-coap-client)
-[![Coverage Status](https://img.shields.io/coveralls/github/AlCalzone/node-coap-client.svg)](https://coveralls.io/github/AlCalzone/node-coap-client)
+[![Coverage Status](https://img.shields.io/coveralls/github/AlCalzone/node-coap-client.svg)](https://coveralls.io/github/AlCalzone/node-coap-client) [![Greenkeeper badge](https://badges.greenkeeper.io/AlCalzone/node-coap-client.svg)](https://greenkeeper.io/)
 
 **Note:** If you want to talk to a Trådfri gateway, use https://github.com/AlCalzone/node-tradfri-client instead. That library builds on node-coap-client with some simplifying abstractions.
 
