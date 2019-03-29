@@ -42,7 +42,7 @@
     "ts-node": "^7.0.1",
     "tslint": "^5.12.0",
     "typescript": "^3.2.2",
-    "yargs": "^12.0.5"
+    "yargs": "^13.2.2"
   },
   "repository": {
     "type": "git",
