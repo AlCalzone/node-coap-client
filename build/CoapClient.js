@@ -11,14 +11,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const crypto = require("crypto");
 const dgram = require("dgram");
 const node_dtls_client_1 = require("node-dtls-client");
-const querystring = require("querystring");
-const nodeUrl = require("url");
 const ContentFormats_1 = require("./ContentFormats");
 const DeferredPromise_1 = require("./lib/DeferredPromise");
 const Origin_1 = require("./lib/Origin");
 const SocketWrapper_1 = require("./lib/SocketWrapper");
 const Message_1 = require("./Message");
 const Option_1 = require("./Option");
+if (!global.URL) {
+    // tslint:disable-next-line: no-var-requires
+    global.URL = require("url").URL;
+}
 // initialize debugging
 const debugPackage = require("debug");
 const LogMessage_1 = require("./lib/LogMessage");
@@ -108,7 +110,7 @@ function normalizeHostname(hostname) {
     if (!hostname.startsWith("coap://") && !hostname.startsWith("coaps://")) {
         hostname = `coaps://${hostname}`;
     }
-    return nodeUrl.parse(hostname).hostname;
+    return new URL(hostname).hostname;
 }
 /**
  * provides methods to access CoAP server resources
@@ -224,7 +226,7 @@ class CoapClient {
         return __awaiter(this, void 0, void 0, function* () {
             // parse/convert url
             if (typeof url === "string") {
-                url = nodeUrl.parse(url);
+                url = new URL(url);
             }
             // ensure we have options and set the default params
             options = this.getRequestOptions(options);
@@ -252,17 +254,12 @@ class CoapClient {
             // [12] content format
             msgOptions.push(Option_1.Options.ContentFormat(ContentFormats_1.ContentFormats.application_json));
             // [15] query
-            if (url.query != null) {
-                // unescape and split the querystring
-                const queryParts = querystring.parse(url.query);
-                for (const key of Object.keys(queryParts)) {
-                    const part = queryParts[key];
-                    if (Array.isArray(part)) {
-                        msgOptions.push(...part.map(value => Option_1.Options.UriQuery(`${key}=${value}`)));
-                    }
-                    else {
-                        msgOptions.push(Option_1.Options.UriQuery(`${key}=${part}`));
-                    }
+            for (const [key, part] of url.searchParams.entries()) {
+                if (Array.isArray(part)) {
+                    msgOptions.push(...part.map(value => Option_1.Options.UriQuery(`${key}=${value}`)));
+                }
+                else {
+                    msgOptions.push(Option_1.Options.UriQuery(`${key}=${part}`));
                 }
             }
             // [23] Block2 (preferred response block size)
@@ -320,7 +317,7 @@ class CoapClient {
             if (typeof target === "string") {
                 target = Origin_1.Origin.parse(target);
             }
-            else if (!(target instanceof Origin_1.Origin)) { // is a nodeUrl
+            else if (!(target instanceof Origin_1.Origin)) { // is a URL
                 target = Origin_1.Origin.fromUrl(target);
             }
             // retrieve or create the connection we're going to use
@@ -455,7 +452,7 @@ class CoapClient {
         return __awaiter(this, void 0, void 0, function* () {
             // parse/convert url
             if (typeof url === "string") {
-                url = nodeUrl.parse(url);
+                url = new URL(url);
             }
             // ensure we have options and set the default params
             options = this.getRequestOptions(options);
@@ -485,7 +482,7 @@ class CoapClient {
             // [12] content format
             msgOptions.push(Option_1.Options.ContentFormat(ContentFormats_1.ContentFormats.application_json));
             // [15] query
-            let query = url.query || "";
+            let query = url.search || "";
             while (query.startsWith("?")) {
                 query = query.slice(1);
             }
@@ -527,7 +524,7 @@ class CoapClient {
     static stopObserving(url) {
         // parse/convert url
         if (typeof url === "string") {
-            url = nodeUrl.parse(url);
+            url = new URL(url);
         }
         // normalize the url
         const urlString = urlToString(url);
@@ -864,7 +861,7 @@ class CoapClient {
             if (typeof target === "string") {
                 target = Origin_1.Origin.parse(target);
             }
-            else if (!(target instanceof Origin_1.Origin)) { // is a nodeUrl
+            else if (!(target instanceof Origin_1.Origin)) { // is a URL
                 target = Origin_1.Origin.fromUrl(target);
             }
             // retrieve or create the connection we're going to use
@@ -894,7 +891,7 @@ class CoapClient {
      * @internal
      */
     static getConnection(origin) {
-        const originString = origin.toString();
+        const originString = origin.toString().toLowerCase();
         if (CoapClient.connections.has(originString)) {
             debug(`getConnection(${originString}) => found existing connection`);
             // return existing connection

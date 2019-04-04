@@ -2,13 +2,22 @@ import * as crypto from "crypto";
 import * as dgram from "dgram";
 import { dtls } from "node-dtls-client";
 import * as querystring from "querystring";
-import * as nodeUrl from "url";
 import { ContentFormats } from "./ContentFormats";
 import { createDeferredPromise, DeferredPromise } from "./lib/DeferredPromise";
 import { Origin } from "./lib/Origin";
 import { SocketWrapper } from "./lib/SocketWrapper";
 import { Message, MessageCode, MessageCodes, MessageType } from "./Message";
 import { BinaryOption, BlockOption, findOption, NumericOption, Option, Options, StringOption } from "./Option";
+
+// the URL object is only available on the global scope since Node 10
+// tslint:disable-next-line: no-namespace
+declare namespace global {
+	export let URL: URL;
+}
+if (!global.URL) {
+	// tslint:disable-next-line: no-var-requires
+	global.URL = require("url").URL;
+}
 
 // initialize debugging
 import * as debugPackage from "debug";
@@ -42,7 +51,7 @@ export interface CoapResponse {
 
 export type ConnectionResult = true | "timeout" | "auth failed" | Error;
 
-function urlToString(url: nodeUrl.Url): string {
+function urlToString(url: URL): string {
 	return `${url.protocol}//${url.hostname}:${url.port}${url.pathname}`;
 }
 
@@ -178,7 +187,7 @@ function normalizeHostname(hostname: string): string {
 	if (!hostname.startsWith("coap://") && !hostname.startsWith("coaps://")) {
 		hostname = `coaps://${hostname}`;
 	}
-	return nodeUrl.parse(hostname).hostname;
+	return new URL(hostname).hostname;
 }
 
 /**
@@ -309,7 +318,7 @@ export class CoapClient {
 	 * @param options - Various options to control the request.
 	 */
 	public static async request(
-		url: string | nodeUrl.Url,
+		url: string | URL,
 		method: RequestMethod,
 		payload?: Buffer,
 		options?: RequestOptions,
@@ -317,7 +326,7 @@ export class CoapClient {
 
 		// parse/convert url
 		if (typeof url === "string") {
-			url = nodeUrl.parse(url);
+			url = new URL(url);
 		}
 
 		// ensure we have options and set the default params
@@ -347,18 +356,13 @@ export class CoapClient {
 		// [12] content format
 		msgOptions.push(Options.ContentFormat(ContentFormats.application_json));
 		// [15] query
-		if (url.query != null) {
-			// unescape and split the querystring
-			const queryParts = querystring.parse(url.query) as Record<string, string | string[]>;
-			for (const key of Object.keys(queryParts)) {
-				const part = queryParts[key];
-				if (Array.isArray(part)) {
-					msgOptions.push(
-						...part.map(value => Options.UriQuery(`${key}=${value}`)),
-					);
-				} else {
-					msgOptions.push(Options.UriQuery(`${key}=${part}`));
-				}
+		for (const [key, part] of url.searchParams.entries()) {
+			if (Array.isArray(part)) {
+				msgOptions.push(
+					...part.map(value => Options.UriQuery(`${key}=${value}`)),
+				);
+			} else {
+				msgOptions.push(Options.UriQuery(`${key}=${part}`));
 			}
 		}
 		// [23] Block2 (preferred response block size)
@@ -419,14 +423,14 @@ export class CoapClient {
 	 * @param timeout - (optional) Timeout in ms, after which the ping is deemed unanswered. Default: 5000ms
 	 */
 	public static async ping(
-		target: string | nodeUrl.Url | Origin,
+		target: string | URL | Origin,
 		timeout: number = 5000,
 	): Promise<boolean> {
 
 		// parse/convert url
 		if (typeof target === "string") {
 			target = Origin.parse(target);
-		} else if (!(target instanceof Origin)) { // is a nodeUrl
+		} else if (!(target instanceof Origin)) { // is a URL
 			target = Origin.fromUrl(target);
 		}
 
@@ -482,7 +486,7 @@ export class CoapClient {
 		} finally {
 			// cleanup
 			clearTimeout(failTimeout);
-			CoapClient.forgetRequest({request: req});
+			CoapClient.forgetRequest({ request: req });
 		}
 
 		return success;
@@ -550,7 +554,7 @@ export class CoapClient {
 		let block2Opt = findOption(message.options, "Block2") as BlockOption;
 		if (block2Opt == null) {
 			// respect the response options and request the next block
-			const {blockNumber, blockSize} = findOption(request.partialResponse.options, "Block2") as BlockOption;
+			const { blockNumber, blockSize } = findOption(request.partialResponse.options, "Block2") as BlockOption;
 			block2Opt = Options.Block2(blockNumber + 1, true, blockSize);
 			message.options.push(block2Opt);
 		} else {
@@ -573,7 +577,7 @@ export class CoapClient {
 	 * @param options - Various options to control the request.
 	 */
 	public static async observe(
-		url: string | nodeUrl.Url,
+		url: string | URL,
 		method: RequestMethod,
 		callback: (resp: CoapResponse) => void,
 		payload?: Buffer,
@@ -582,7 +586,7 @@ export class CoapClient {
 
 		// parse/convert url
 		if (typeof url === "string") {
-			url = nodeUrl.parse(url);
+			url = new URL(url);
 		}
 
 		// ensure we have options and set the default params
@@ -614,7 +618,7 @@ export class CoapClient {
 		// [12] content format
 		msgOptions.push(Options.ContentFormat(ContentFormats.application_json));
 		// [15] query
-		let query: string = url.query || "";
+		let query: string = url.search || "";
 		while (query.startsWith("?")) { query = query.slice(1); }
 		while (query.endsWith("&")) { query = query.slice(0, -1); }
 		const queryParts = query.split("&");
@@ -657,11 +661,11 @@ export class CoapClient {
 	/**
 	 * Stops observation of the given url
 	 */
-	public static stopObserving(url: string | nodeUrl.Url) {
+	public static stopObserving(url: string | URL) {
 
 		// parse/convert url
 		if (typeof url === "string") {
-			url = nodeUrl.parse(url);
+			url = new URL(url);
 		}
 
 		// normalize the url
@@ -847,7 +851,7 @@ export class CoapClient {
 		priority: "normal" | "high" | "immediate" = "normal",
 	): void {
 
-		const request = CoapClient.findRequest({msgID: message.messageId});
+		const request = CoapClient.findRequest({ msgID: message.messageId });
 
 		switch (priority) {
 			case "immediate": {
@@ -859,14 +863,14 @@ export class CoapClient {
 			}
 			case "normal": {
 				// Put the message in the queue
-				CoapClient.sendQueue.push({connection, message});
+				CoapClient.sendQueue.push({ connection, message });
 				debug(`added message to the send queue with normal priority, new length = ${CoapClient.sendQueue.length}`);
 				break;
 			}
 			case "high": {
 				// Put the message in the queue (in first position)
 				// This is for subsequent requests to blockwise resources
-				CoapClient.sendQueue.unshift({connection, message});
+				CoapClient.sendQueue.unshift({ connection, message });
 				debug(`added message to the send queue with high priority, new length = ${CoapClient.sendQueue.length}`);
 				break;
 			}
@@ -1068,11 +1072,11 @@ export class CoapClient {
 	 * Tries to establish a connection to the given target. Returns true on success, false otherwise.
 	 * @param target The target to connect to. Must be a string, NodeJS.Url or Origin and has to contain the protocol, host and port.
 	 */
-	public static async tryToConnect(target: string | nodeUrl.Url | Origin): Promise<ConnectionResult> {
+	public static async tryToConnect(target: string | URL | Origin): Promise<ConnectionResult> {
 		// parse/convert url
 		if (typeof target === "string") {
 			target = Origin.parse(target);
-		} else if (!(target instanceof Origin)) { // is a nodeUrl
+		} else if (!(target instanceof Origin)) { // is a URL
 			target = Origin.fromUrl(target);
 		}
 
@@ -1100,7 +1104,7 @@ export class CoapClient {
 	 * @internal
 	 */
 	public static getConnection(origin: Origin): Promise<ConnectionInfo> {
-		const originString = origin.toString();
+		const originString = origin.toString().toLowerCase();
 		if (CoapClient.connections.has(originString)) {
 			debug(`getConnection(${originString}) => found existing connection`);
 			// return existing connection

@@ -1,5 +1,4 @@
 /// <reference types="node" />
-import * as nodeUrl from "url";
 import { ContentFormats } from "./ContentFormats";
 import { Origin } from "./lib/Origin";
 import { MessageCode } from "./Message";
@@ -67,7 +66,7 @@ export declare class CoapClient {
      * @param payload - The optional payload to be attached to the request
      * @param options - Various options to control the request.
      */
-    static request(url: string | nodeUrl.Url, method: RequestMethod, payload?: Buffer, options?: RequestOptions): Promise<CoapResponse>;
+    static request(url: string | URL, method: RequestMethod, payload?: Buffer, options?: RequestOptions): Promise<CoapResponse>;
     /**
      * Creates a RetransmissionInfo to use for retransmission of lost packets
      * @param messageId The message id of the corresponding request
@@ -78,7 +77,7 @@ export declare class CoapClient {
      * @param target - The target to be pinged. Must be a string, NodeJS.Url or Origin and has to contain the protocol, host and port.
      * @param timeout - (optional) Timeout in ms, after which the ping is deemed unanswered. Default: 5000ms
      */
-    static ping(target: string | nodeUrl.Url | Origin, timeout?: number): Promise<boolean>;
+    static ping(target: string | URL | Origin, timeout?: number): Promise<boolean>;
     /**
      * Re-Sends a message in case it got lost
      * @param msgID
@@ -98,11 +97,11 @@ export declare class CoapClient {
      * @param payload - The optional payload to be attached to the request
      * @param options - Various options to control the request.
      */
-    static observe(url: string | nodeUrl.Url, method: RequestMethod, callback: (resp: CoapResponse) => void, payload?: Buffer, options?: RequestOptions): Promise<void>;
+    static observe(url: string | URL, method: RequestMethod, callback: (resp: CoapResponse) => void, payload?: Buffer, options?: RequestOptions): Promise<void>;
     /**
      * Stops observation of the given url
      */
-    static stopObserving(url: string | nodeUrl.Url): void;
+    static stopObserving(url: string | URL): void;
     private static onMessage;
     /**
      * Creates a message with the given parameters
@@ -157,7 +156,7 @@ export declare class CoapClient {
      * Tries to establish a connection to the given target. Returns true on success, false otherwise.
      * @param target The target to connect to. Must be a string, NodeJS.Url or Origin and has to contain the protocol, host and port.
      */
-    static tryToConnect(target: string | nodeUrl.Url | Origin): Promise<ConnectionResult>;
+    static tryToConnect(target: string | URL | Origin): Promise<ConnectionResult>;
     private static workOffPendingConnections;
     /**
      * Establishes or retrieves a socket that can be used to send to and receive data from the given origin
