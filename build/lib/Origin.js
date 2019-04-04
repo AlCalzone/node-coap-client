@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const nodeUrl = require("url");
+if (!global.URL) {
+    // tslint:disable-next-line: no-var-requires
+    global.URL = require("url").URL;
+}
 /**
  * Identifies another endpoint (similar to the new WhatWG URL API "origin" property)
  */
@@ -17,7 +20,7 @@ class Origin {
         return new Origin(url.protocol, url.hostname, +url.port);
     }
     static parse(origin) {
-        return Origin.fromUrl(nodeUrl.parse(origin));
+        return Origin.fromUrl(new URL(origin));
     }
 }
 exports.Origin = Origin;
