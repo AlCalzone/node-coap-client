@@ -970,42 +970,44 @@ class CoapClient {
      * @param origin - The other party
      */
     static getSocket(origin) {
-        switch (origin.protocol) {
-            case "coap:":
-                // simply return a normal udp socket
-                return Promise.resolve(new SocketWrapper_1.SocketWrapper(dgram.createSocket("udp4")));
-            case "coaps:":
-                // try to find security parameters
-                if (!CoapClient.dtlsParams.has(origin.hostname)) {
-                    return Promise.reject(new Error(`No security parameters given for the resource at ${origin.toString()}`));
-                }
-                const socketAddress = Hostname_1.getSocketAddressFromURLSafeHostname(origin.hostname);
-                const dtlsOpts = Object.assign({
-                    type: net_1.isIPv6(socketAddress) ? "udp6" : "udp4",
-                    address: socketAddress,
-                    port: origin.port,
-                }, CoapClient.dtlsParams.get(origin.hostname));
-                // return a promise we resolve as soon as the connection is secured
-                const ret = DeferredPromise_1.createDeferredPromise();
-                // try connecting
-                const onConnection = () => {
-                    debug("successfully created socket for origin " + origin.toString());
-                    sock.removeListener("error", onError);
-                    ret.resolve(new SocketWrapper_1.SocketWrapper(sock));
-                };
-                const onError = (e) => {
-                    debug("socket creation for origin " + origin.toString() + " failed: " + e);
-                    sock.removeListener("connected", onConnection);
-                    ret.reject(e.message);
-                };
-                const sock = node_dtls_client_1.dtls
-                    .createSocket(dtlsOpts)
-                    .once("connected", onConnection)
-                    .once("error", onError);
-                return ret;
-            default:
-                throw new Error(`protocol type "${origin.protocol}" is not supported`);
-        }
+        return __awaiter(this, void 0, void 0, function* () {
+            switch (origin.protocol) {
+                case "coap:":
+                    // simply return a normal udp socket
+                    return new SocketWrapper_1.SocketWrapper(dgram.createSocket("udp4"));
+                case "coaps:":
+                    // try to find security parameters
+                    if (!CoapClient.dtlsParams.has(origin.hostname)) {
+                        throw new Error(`No security parameters given for the resource at ${origin.toString()}`);
+                    }
+                    const socketAddress = yield Hostname_1.getSocketAddressFromURLSafeHostname(origin.hostname);
+                    const dtlsOpts = Object.assign({
+                        type: net_1.isIPv6(socketAddress) ? "udp6" : "udp4",
+                        address: socketAddress,
+                        port: origin.port,
+                    }, CoapClient.dtlsParams.get(origin.hostname));
+                    // return a promise we resolve as soon as the connection is secured
+                    const ret = DeferredPromise_1.createDeferredPromise();
+                    // try connecting
+                    const onConnection = () => {
+                        debug("successfully created socket for origin " + origin.toString());
+                        sock.removeListener("error", onError);
+                        ret.resolve(new SocketWrapper_1.SocketWrapper(sock));
+                    };
+                    const onError = (e) => {
+                        debug("socket creation for origin " + origin.toString() + " failed: " + e);
+                        sock.removeListener("connected", onConnection);
+                        ret.reject(e.message);
+                    };
+                    const sock = node_dtls_client_1.dtls
+                        .createSocket(dtlsOpts)
+                        .once("connected", onConnection)
+                        .once("error", onError);
+                    return ret;
+                default:
+                    throw new Error(`protocol type "${origin.protocol}" is not supported`);
+            }
+        });
     }
 }
 CoapClient.connections = new Map();
