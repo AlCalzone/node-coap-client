@@ -1,13 +1,14 @@
 import * as crypto from "crypto";
 import * as dgram from "dgram";
+import { isIPv6 } from "net";
 import { dtls } from "node-dtls-client";
-import * as querystring from "querystring";
 import { ContentFormats } from "./ContentFormats";
 import { createDeferredPromise, DeferredPromise } from "./lib/DeferredPromise";
+import { getSocketAddressFromURLSafeHostname, getURLSafeHostname } from "./lib/Hostname";
 import { Origin } from "./lib/Origin";
 import { SocketWrapper } from "./lib/SocketWrapper";
 import { Message, MessageCode, MessageCodes, MessageType } from "./Message";
-import { BinaryOption, BlockOption, findOption, NumericOption, Option, Options, StringOption } from "./Option";
+import { BlockOption, findOption, NumericOption, Option, Options } from "./Option";
 
 // the URL object is only available on the global scope since Node 10
 // tslint:disable-next-line: no-namespace
@@ -52,7 +53,7 @@ export interface CoapResponse {
 export type ConnectionResult = true | "timeout" | "auth failed" | Error;
 
 function urlToString(url: URL): string {
-	return `${url.protocol}//${url.hostname}:${url.port}${url.pathname}`;
+	return `${url.protocol}//${getURLSafeHostname(url.hostname)}:${url.port}${url.pathname}`;
 }
 
 interface ConnectionInfo {
@@ -185,7 +186,7 @@ function validateBlockSize(size: number): boolean {
 function normalizeHostname(hostname: string): string {
 	// make sure noone gave us a full URI
 	if (!hostname.startsWith("coap://") && !hostname.startsWith("coaps://")) {
-		hostname = `coaps://${hostname}`;
+		hostname = `coaps://${getURLSafeHostname(hostname)}`;
 	}
 	return new URL(hostname).hostname;
 }
@@ -1192,10 +1193,12 @@ export class CoapClient {
 				if (!CoapClient.dtlsParams.has(origin.hostname)) {
 					return Promise.reject(new Error(`No security parameters given for the resource at ${origin.toString()}`));
 				}
+
+				const socketAddress = getSocketAddressFromURLSafeHostname(origin.hostname);
 				const dtlsOpts: dtls.Options = Object.assign(
 					({
-						type: "udp4",
-						address: origin.hostname,
+						type: isIPv6(socketAddress) ? "udp6" : "udp4",
+						address: socketAddress,
 						port: origin.port,
 					} as dtls.Options),
 					CoapClient.dtlsParams.get(origin.hostname),

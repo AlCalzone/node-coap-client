@@ -1,3 +1,5 @@
+import { getURLSafeHostname } from "./Hostname";
+
 // the URL object is only available on the global scope since Node 10
 // tslint:disable-next-line: no-namespace
 declare namespace global {
@@ -19,7 +21,7 @@ export class Origin {
 	) {}
 
 	public toString(): string {
-		return `${this.protocol}//${this.hostname}:${this.port}`;
+		return `${this.protocol}//${getURLSafeHostname(this.hostname)}:${this.port}`;
 	}
 
 	public static fromUrl(url: URL): Origin {

@@ -10,9 +10,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const crypto = require("crypto");
 const dgram = require("dgram");
+const net_1 = require("net");
 const node_dtls_client_1 = require("node-dtls-client");
 const ContentFormats_1 = require("./ContentFormats");
 const DeferredPromise_1 = require("./lib/DeferredPromise");
+const Hostname_1 = require("./lib/Hostname");
 const Origin_1 = require("./lib/Origin");
 const SocketWrapper_1 = require("./lib/SocketWrapper");
 const Message_1 = require("./Message");
@@ -30,7 +32,7 @@ const debug = debugPackage("node-coap-client");
 const npmVersion = require("../package.json").version;
 debug(`CoAP client version ${npmVersion}`);
 function urlToString(url) {
-    return `${url.protocol}//${url.hostname}:${url.port}${url.pathname}`;
+    return `${url.protocol}//${Hostname_1.getURLSafeHostname(url.hostname)}:${url.port}${url.pathname}`;
 }
 class PendingRequest {
     constructor(initial) {
@@ -108,7 +110,7 @@ function validateBlockSize(size) {
 function normalizeHostname(hostname) {
     // make sure noone gave us a full URI
     if (!hostname.startsWith("coap://") && !hostname.startsWith("coaps://")) {
-        hostname = `coaps://${hostname}`;
+        hostname = `coaps://${Hostname_1.getURLSafeHostname(hostname)}`;
     }
     return new URL(hostname).hostname;
 }
@@ -977,9 +979,10 @@ class CoapClient {
                 if (!CoapClient.dtlsParams.has(origin.hostname)) {
                     return Promise.reject(new Error(`No security parameters given for the resource at ${origin.toString()}`));
                 }
+                const socketAddress = Hostname_1.getSocketAddressFromURLSafeHostname(origin.hostname);
                 const dtlsOpts = Object.assign({
-                    type: "udp4",
-                    address: origin.hostname,
+                    type: net_1.isIPv6(socketAddress) ? "udp6" : "udp4",
+                    address: socketAddress,
                     port: origin.port,
                 }, CoapClient.dtlsParams.get(origin.hostname));
                 // return a promise we resolve as soon as the connection is secured
