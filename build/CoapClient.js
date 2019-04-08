@@ -10,9 +10,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const crypto = require("crypto");
 const dgram = require("dgram");
+const net_1 = require("net");
 const node_dtls_client_1 = require("node-dtls-client");
 const ContentFormats_1 = require("./ContentFormats");
 const DeferredPromise_1 = require("./lib/DeferredPromise");
+const Hostname_1 = require("./lib/Hostname");
 const Origin_1 = require("./lib/Origin");
 const SocketWrapper_1 = require("./lib/SocketWrapper");
 const Message_1 = require("./Message");
@@ -30,7 +32,7 @@ const debug = debugPackage("node-coap-client");
 const npmVersion = require("../package.json").version;
 debug(`CoAP client version ${npmVersion}`);
 function urlToString(url) {
-    return `${url.protocol}//${url.hostname}:${url.port}${url.pathname}`;
+    return `${url.protocol}//${Hostname_1.getURLSafeHostname(url.hostname)}:${url.port}${url.pathname}`;
 }
 class PendingRequest {
     constructor(initial) {
@@ -108,7 +110,7 @@ function validateBlockSize(size) {
 function normalizeHostname(hostname) {
     // make sure noone gave us a full URI
     if (!hostname.startsWith("coap://") && !hostname.startsWith("coaps://")) {
-        hostname = `coaps://${hostname}`;
+        hostname = `coaps://${Hostname_1.getURLSafeHostname(hostname)}`;
     }
     return new URL(hostname).hostname;
 }
@@ -968,41 +970,44 @@ class CoapClient {
      * @param origin - The other party
      */
     static getSocket(origin) {
-        switch (origin.protocol) {
-            case "coap:":
-                // simply return a normal udp socket
-                return Promise.resolve(new SocketWrapper_1.SocketWrapper(dgram.createSocket("udp4")));
-            case "coaps:":
-                // try to find security parameters
-                if (!CoapClient.dtlsParams.has(origin.hostname)) {
-                    return Promise.reject(new Error(`No security parameters given for the resource at ${origin.toString()}`));
-                }
-                const dtlsOpts = Object.assign({
-                    type: "udp4",
-                    address: origin.hostname,
-                    port: origin.port,
-                }, CoapClient.dtlsParams.get(origin.hostname));
-                // return a promise we resolve as soon as the connection is secured
-                const ret = DeferredPromise_1.createDeferredPromise();
-                // try connecting
-                const onConnection = () => {
-                    debug("successfully created socket for origin " + origin.toString());
-                    sock.removeListener("error", onError);
-                    ret.resolve(new SocketWrapper_1.SocketWrapper(sock));
-                };
-                const onError = (e) => {
-                    debug("socket creation for origin " + origin.toString() + " failed: " + e);
-                    sock.removeListener("connected", onConnection);
-                    ret.reject(e.message);
-                };
-                const sock = node_dtls_client_1.dtls
-                    .createSocket(dtlsOpts)
-                    .once("connected", onConnection)
-                    .once("error", onError);
-                return ret;
-            default:
-                throw new Error(`protocol type "${origin.protocol}" is not supported`);
-        }
+        return __awaiter(this, void 0, void 0, function* () {
+            switch (origin.protocol) {
+                case "coap:":
+                    // simply return a normal udp socket
+                    return new SocketWrapper_1.SocketWrapper(dgram.createSocket("udp4"));
+                case "coaps:":
+                    // try to find security parameters
+                    if (!CoapClient.dtlsParams.has(origin.hostname)) {
+                        throw new Error(`No security parameters given for the resource at ${origin.toString()}`);
+                    }
+                    const socketAddress = yield Hostname_1.getSocketAddressFromURLSafeHostname(origin.hostname);
+                    const dtlsOpts = Object.assign({
+                        type: net_1.isIPv6(socketAddress) ? "udp6" : "udp4",
+                        address: socketAddress,
+                        port: origin.port,
+                    }, CoapClient.dtlsParams.get(origin.hostname));
+                    // return a promise we resolve as soon as the connection is secured
+                    const ret = DeferredPromise_1.createDeferredPromise();
+                    // try connecting
+                    const onConnection = () => {
+                        debug("successfully created socket for origin " + origin.toString());
+                        sock.removeListener("error", onError);
+                        ret.resolve(new SocketWrapper_1.SocketWrapper(sock));
+                    };
+                    const onError = (e) => {
+                        debug("socket creation for origin " + origin.toString() + " failed: " + e);
+                        sock.removeListener("connected", onConnection);
+                        ret.reject(e.message);
+                    };
+                    const sock = node_dtls_client_1.dtls
+                        .createSocket(dtlsOpts)
+                        .once("connected", onConnection)
+                        .once("error", onError);
+                    return ret;
+                default:
+                    throw new Error(`protocol type "${origin.protocol}" is not supported`);
+            }
+        });
     }
 }
 CoapClient.connections = new Map();
