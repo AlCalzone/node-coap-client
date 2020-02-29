@@ -1087,8 +1087,12 @@ export class CoapClient {
 			return true;
 		} catch (e) {
 			debug(`tryToConnect(${target}) => failed with error: ${e}`);
-			if (/bad_record_mac/.test(e.message)) {
-				// as of DTLSv1.2 this means we provided invalid credentials
+			if (
+				// DTLSv1.2: invalid password
+				/bad_record_mac/.test(e.message)
+				// DTLSv1.3: invalid identity
+				|| /unknown_psk_identity/.test(e.message)
+			) {
 				return "auth failed";
 			} else if (/(dtls handshake timed out|enotfound)/i.test(e.message)) {
 				// The other party could not be reached or has no DTLS server running

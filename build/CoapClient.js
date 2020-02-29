@@ -1,9 +1,10 @@
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -873,8 +874,11 @@ class CoapClient {
             }
             catch (e) {
                 debug(`tryToConnect(${target}) => failed with error: ${e}`);
-                if (/bad_record_mac/.test(e.message)) {
-                    // as of DTLSv1.2 this means we provided invalid credentials
+                if (
+                // DTLSv1.2: invalid password
+                /bad_record_mac/.test(e.message)
+                    // DTLSv1.3: invalid identity
+                    || /unknown_psk_identity/.test(e.message)) {
                     return "auth failed";
                 }
                 else if (/(dtls handshake timed out|enotfound)/i.test(e.message)) {
@@ -1010,6 +1014,7 @@ class CoapClient {
         });
     }
 }
+exports.CoapClient = CoapClient;
 CoapClient.connections = new Map();
 /** Queue of the connections waiting to be established, sorted by the origin */
 CoapClient.pendingConnections = new Map();
@@ -1029,4 +1034,3 @@ CoapClient.defaultRequestOptions = {
     retransmit: true,
     preferredBlockSize: null,
 };
-exports.CoapClient = CoapClient;

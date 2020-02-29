@@ -12,9 +12,9 @@ export declare abstract class Option {
     readonly name: OptionName;
     rawValue: Buffer;
     constructor(code: number, name: OptionName, rawValue: Buffer);
-    readonly noCacheKey: boolean;
-    readonly unsafe: boolean;
-    readonly critical: boolean;
+    get noCacheKey(): boolean;
+    get unsafe(): boolean;
+    get critical(): boolean;
     /**
      * parses a CoAP option from the given buffer. The buffer must start at the option
      * @param buf - the buffer to read from
@@ -38,7 +38,8 @@ export declare class NumericOption extends Option {
     readonly repeatable: boolean;
     readonly maxLength: number;
     constructor(code: number, name: OptionName, repeatable: boolean, maxLength: number, rawValue: Buffer);
-    value: number;
+    get value(): number;
+    set value(value: number);
     static create(code: number, name: OptionName, repeatable: boolean, maxLength: number, rawValue: Buffer): NumericOption;
     toString(): string;
 }
@@ -51,25 +52,28 @@ export declare class BlockOption extends NumericOption {
      * The size exponent of this block in the range 0..6
      * The actual block size is calculated by 2**(4 + exp)
      */
-    sizeExponent: number;
+    get sizeExponent(): number;
+    set sizeExponent(value: number);
     /**
      * The size of this block in bytes
      */
-    readonly blockSize: number;
+    get blockSize(): number;
     /**
      * Indicates if there are more blocks following after this one.
      */
-    isLastBlock: boolean;
+    get isLastBlock(): boolean;
+    set isLastBlock(value: boolean);
     /**
      * The sequence number of this block.
      * When present in a request message, this determines the number of the block being requested
      * When present in a response message, this indicates the number of the provided block
      */
-    blockNumber: number;
+    get blockNumber(): number;
+    set blockNumber(value: number);
     /**
      * Returns the position of the first byte of this block in the complete message
      */
-    readonly byteOffset: number;
+    get byteOffset(): number;
     toString(): string;
 }
 /**
@@ -81,7 +85,8 @@ export declare class BinaryOption extends Option {
     readonly minLength: number;
     readonly maxLength: number;
     constructor(code: number, name: OptionName, repeatable: boolean, minLength: number, maxLength: number, rawValue: Buffer);
-    value: Buffer;
+    get value(): Buffer;
+    set value(value: Buffer);
     static create(code: number, name: OptionName, repeatable: boolean, minLength: number, maxLength: number, rawValue: Buffer): BinaryOption;
     toString(): string;
 }
@@ -94,7 +99,8 @@ export declare class StringOption extends Option {
     readonly minLength: number;
     readonly maxLength: number;
     constructor(code: number, name: OptionName, repeatable: boolean, minLength: number, maxLength: number, rawValue: Buffer);
-    value: string;
+    get value(): string;
+    set value(value: string);
     static create(code: number, name: OptionName, repeatable: boolean, minLength: number, maxLength: number, rawValue: Buffer): StringOption;
     toString(): string;
 }

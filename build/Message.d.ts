@@ -11,7 +11,7 @@ export declare class MessageCode {
     readonly minor: number;
     constructor(major: number, minor: number);
     static fromValue(value: number): MessageCode;
-    readonly value: number;
+    get value(): number;
     isEmpty(): boolean;
     isRequest(): boolean;
     isResponse(): boolean;
