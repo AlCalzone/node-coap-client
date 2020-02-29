@@ -154,94 +154,98 @@ This causes all pending connections and requests to be dropped and clears all ob
 To only reset connections and requests for a specific hostname, pass the hostname or origin as the optional parameter.
 
 ## Changelog
+<!--
+    PLACEHOLDER for next version:
+    ### __WORK IN PROGRESS__
+-->
 
-#### 1.0.2 (2018-12-29)
+### 1.0.2 (2018-12-29)
 * (chrisEff) Update dependencies
 
-#### 1.0.1 (2018-11-04)
+### 1.0.1 (2018-11-04)
 * (AlCalzone) Rework the installation procedure. `node-aead-crypto` is now optional.
 
-#### 1.0.0 (2018-07-30)
+### 1.0.0 (2018-07-30)
 * (mkovatsc) Add support for the Uri-Query option
 * (AlCalzone) `tryToConnect` no longer returns `"error"` when an unexpected error occured but instead **returns** the `Error` instance.
 
-#### 0.7.2 (2018-05-01)
+### 0.7.2 (2018-05-01)
 * (AlCalzone) **Potentially breaking change:** Update `node-dtls-client` library.
 
-#### 0.6.2 (2018-04-27)
+### 0.6.2 (2018-04-27)
 * (AlCalzone) Add support for NodeJS 10
 
-#### 0.6.1 (2018-03-18)
+### 0.6.1 (2018-03-18)
 * (AlCalzone) Treat `"ENOTFOUND"` as `"timeout"` instead of the generic `"error"` for connection purposes
 
-#### 0.6.0 (2018-03-15) - WARNING: BREAKING CHANGE!!!
+### 0.6.0 (2018-03-15) - WARNING: BREAKING CHANGE!!!
 * (AlCalzone) `tryToConnect` now resolves with either `true` (boolean!) in case of success or one of the following error codes: `"auth failed"`, `"timeout"`, `"error"`
 
-#### 0.5.5 (2018-02-27)
+### 0.5.5 (2018-02-27)
 * (AlCalzone) Fix an error when requesting the next block in a blockwise transfer
 
-#### 0.5.4 (2018-02-13)
+### 0.5.4 (2018-02-13)
 * (AlCalzone) The hostname in `setSecurityParams` is now treated like the one given to `tryToConnect` (fixes the issue mentioned in #30)
 
-#### 0.5.3 (2018-02-07)
+### 0.5.3 (2018-02-07)
 * (AlCalzone) Attempt to fix `TypeError: generator already running` in ioBroker.tradfri
 
-#### 0.5.2 (2018-02-05)
+### 0.5.2 (2018-02-05)
 * (AlCalzone) Update DTLS library: Several errors in cipher suites fixed
 
-#### 0.5.1 (2018-01-01)
+### 0.5.1 (2018-01-01)
 * (AlCalzone) Use `Map`s instead of dictionary objects
 * (AlCalzone) Remove excessive calls to the `concurrencyChanged` handlers
 
-#### 0.5.0 (2017-12-24)
+### 0.5.0 (2017-12-24)
 * (AlCalzone) Support receiving block-wise messages
 
-#### 0.4.8 (2017-10-19)
+### 0.4.8 (2017-10-19)
 * (AlCalzone) Fixed retransmission
 
-#### 0.4.7 (2017-10-07)
+### 0.4.7 (2017-10-07)
 * (AlCalzone) Removed potential sources of infinite loops
 
-#### 0.4.6 (2017-10-02)
+### 0.4.6 (2017-10-02)
 * (AlCalzone) Catch potential error in CoapClient.ping()
 
-#### 0.4.4 (2017-09-25)
+### 0.4.4 (2017-09-25)
 * (AlCalzone) Bugfixes
 
-#### 0.4.1 (2017-09-23)
+### 0.4.1 (2017-09-23)
 * (AlCalzone) Prevent a race condition while creating new connections
 
-#### 0.4.0 (2017-09-23)
+### 0.4.0 (2017-09-23)
 * (AlCalzone) Limit the number of concurrent requests
 
-#### 0.3.2 (2017-09-21)
+### 0.3.2 (2017-09-21)
 * (AlCalzone) Update DTLS library: Alert protocol support
 
-#### 0.3.1 (2017-09-21)
+### 0.3.1 (2017-09-21)
 * (AlCalzone) make keepAlive option actually do something
 * (AlCalzone) Add tryToConnect function to preemptively test and connect to a resource
 
-#### 0.3.0 (2017-09-20)
+### 0.3.0 (2017-09-20)
 * (AlCalzone) support CoAP ping (empty CON message)
 
-#### 0.2.0 (2017-08-24)
+### 0.2.0 (2017-08-24)
 * (bonan & AlCalzone) implemented connection reset
 * (bonan) reject response promise when retransmission fails
 * (bonan) use debug package instead of console.log
 
-#### 0.1.0 (2017-08-23)
+### 0.1.0 (2017-08-23)
 * (AlCalzone) release on npm
 
-#### 0.0.4 (2017-08-09)
+### 0.0.4 (2017-08-09)
 * (AlCalzone) bugfixes
 
-#### 0.0.3 (2017-08-01)
+### 0.0.3 (2017-08-01)
 * (AlCalzone) reliability improvements
 
-#### 0.0.2 (2017-07-25)
+### 0.0.2 (2017-07-25)
 * (AlCalzone) implemented retransmission of lost messages.
 
-#### 0.0.1
+### 0.0.1
 * (AlCalzone) initial release. 
 
 
