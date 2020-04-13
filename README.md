@@ -159,6 +159,9 @@ To only reset connections and requests for a specific hostname, pass the hostnam
     ### __WORK IN PROGRESS__
 -->
 
+### __WORK IN PROGRESS__
+* (AlCalzone) All hostnames are now always normalized to lowercase
+
 ### 1.0.3 (2020-02-29)
 * (AlCalzone) An unknown PSK is now treated like an invalid password
 

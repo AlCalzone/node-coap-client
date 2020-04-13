@@ -188,7 +188,7 @@ function normalizeHostname(hostname: string): string {
 	if (!hostname.startsWith("coap://") && !hostname.startsWith("coaps://")) {
 		hostname = `coaps://${getURLSafeHostname(hostname)}`;
 	}
-	return new URL(hostname).hostname;
+	return new URL(hostname).hostname.toLowerCase();
 }
 
 /**
