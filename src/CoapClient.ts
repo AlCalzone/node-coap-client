@@ -619,14 +619,15 @@ export class CoapClient {
 		// [12] content format
 		msgOptions.push(Options.ContentFormat(ContentFormats.application_json));
 		// [15] query
-		let query: string = url.search || "";
-		while (query.startsWith("?")) { query = query.slice(1); }
-		while (query.endsWith("&")) { query = query.slice(0, -1); }
-		const queryParts = query.split("&");
-		msgOptions.push(
-			...queryParts.map(part => Options.UriQuery(part)),
-		);
-
+		for (const [key, part] of url.searchParams.entries()) {
+			if (Array.isArray(part)) {
+				msgOptions.push(
+					...part.map(value => Options.UriQuery(`${key}=${value}`)),
+				);
+			} else {
+				msgOptions.push(Options.UriQuery(`${key}=${part}`));
+			}
+		}
 		// In contrast to requests, we don't work with a deferred promise when observing
 		// Instead, we invoke a callback for *every* response.
 

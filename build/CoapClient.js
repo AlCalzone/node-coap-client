@@ -113,7 +113,7 @@ function normalizeHostname(hostname) {
     if (!hostname.startsWith("coap://") && !hostname.startsWith("coaps://")) {
         hostname = `coaps://${Hostname_1.getURLSafeHostname(hostname)}`;
     }
-    return new URL(hostname).hostname;
+    return new URL(hostname).hostname.toLowerCase();
 }
 /**
  * provides methods to access CoAP server resources
@@ -485,15 +485,14 @@ class CoapClient {
             // [12] content format
             msgOptions.push(Option_1.Options.ContentFormat(ContentFormats_1.ContentFormats.application_json));
             // [15] query
-            let query = url.search || "";
-            while (query.startsWith("?")) {
-                query = query.slice(1);
+            for (const [key, part] of url.searchParams.entries()) {
+                if (Array.isArray(part)) {
+                    msgOptions.push(...part.map(value => Option_1.Options.UriQuery(`${key}=${value}`)));
+                }
+                else {
+                    msgOptions.push(Option_1.Options.UriQuery(`${key}=${part}`));
+                }
             }
-            while (query.endsWith("&")) {
-                query = query.slice(0, -1);
-            }
-            const queryParts = query.split("&");
-            msgOptions.push(...queryParts.map(part => Option_1.Options.UriQuery(part)));
             // In contrast to requests, we don't work with a deferred promise when observing
             // Instead, we invoke a callback for *every* response.
             // create the message we're going to send
