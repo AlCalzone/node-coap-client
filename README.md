@@ -159,7 +159,7 @@ To only reset connections and requests for a specific hostname, pass the hostnam
     ### __WORK IN PROGRESS__
 -->
 
-### __WORK IN PROGRESS__
+### 1.0.5 (2020-04-25)
 * (AlCalzone) Avoid empty Url-Query options for observe requests
 
 ### 1.0.4 (2020-04-13)
