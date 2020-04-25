@@ -37,7 +37,6 @@ class Option {
         return (this.code & 0b1) === 0b1;
     }
     /*
-    
          0   1   2   3   4   5   6   7
        +---------------+---------------+
        |  Option Delta | Option Length |   1 byte
