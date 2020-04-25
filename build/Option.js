@@ -2,6 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 function numberToBuffer(value) {
     const ret = [];
+    // According to https://tools.ietf.org/html/rfc7252#section-3.2
+    // a sender SHOULD represent the integer with as few bytes as possible, i.e.,
+    // without leading zero bytes. For example, the number 0 is represented with
+    // an empty option value (a zero-length sequence of bytes)
     while (value > 0) {
         ret.unshift(value & 0xff);
         value >>>= 8;
@@ -357,7 +361,7 @@ exports.Options = Object.freeze({
     UriQuery: (query) => optionConstructors["Uri-Query"](Buffer.from(query)),
     LocationPath: (pathname) => optionConstructors["Location-Path"](Buffer.from(pathname)),
     ContentFormat: (format) => optionConstructors["Content-Format"](numberToBuffer(format)),
-    Observe: (observe) => optionConstructors["Observe"](Buffer.from([observe ? 0 : 1])),
+    Observe: (observe) => optionConstructors["Observe"](numberToBuffer(observe ? 0 : 1)),
     Block1: (num, isLast, size) => {
         // Warning: we're not checking for a valid size here, do that in advance!
         const sizeExp = Math.log2(size) - 4;

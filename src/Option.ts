@@ -2,6 +2,10 @@ import { ContentFormats } from "./ContentFormats";
 
 function numberToBuffer(value: number): Buffer {
 	const ret = [];
+	// According to https://tools.ietf.org/html/rfc7252#section-3.2
+	// a sender SHOULD represent the integer with as few bytes as possible, i.e.,
+	// without leading zero bytes. For example, the number 0 is represented with
+	// an empty option value (a zero-length sequence of bytes)
 	while (value > 0) {
 		ret.unshift(value & 0xff);
 		value >>>= 8;
@@ -32,7 +36,7 @@ export type OptionName =
 	"Location-Query" |
 	"Proxy-Uri" |
 	"Proxy-Scheme"
-;
+	;
 
 /**
  * Abstract base class for all message options. Provides methods to parse and serialize.
@@ -47,12 +51,12 @@ export abstract class Option {
 
 	}
 
-/*
-	  0   1   2   3   4   5   6   7
-	+---+---+---+---+---+---+---+---+
-	|           | NoCacheKey| U | C |
-	+---+---+---+---+---+---+---+---+
-*/
+	/*
+		  0   1   2   3   4   5   6   7
+		+---+---+---+---+---+---+---+---+
+		|           | NoCacheKey| U | C |
+		+---+---+---+---+---+---+---+---+
+	*/
 	public get noCacheKey(): boolean {
 		return (this.code & 0b11100) === 0b11100;
 	}
@@ -63,30 +67,30 @@ export abstract class Option {
 		return (this.code & 0b1) === 0b1;
 	}
 
-/*
-
-	 0   1   2   3   4   5   6   7
-   +---------------+---------------+
-   |  Option Delta | Option Length |   1 byte
-   +---------------+---------------+
-   /         Option Delta          /   0-2 bytes
-   \          (extended)           \
-   +-------------------------------+
-   /         Option Length         /   0-2 bytes
-   \          (extended)           \
-   +-------------------------------+
-   \                               \
-   /         Option Value          /   0 or more bytes
-   \                               \
-   +-------------------------------+
-*/
+	/*
+	
+		 0   1   2   3   4   5   6   7
+	   +---------------+---------------+
+	   |  Option Delta | Option Length |   1 byte
+	   +---------------+---------------+
+	   /         Option Delta          /   0-2 bytes
+	   \          (extended)           \
+	   +-------------------------------+
+	   /         Option Length         /   0-2 bytes
+	   \          (extended)           \
+	   +-------------------------------+
+	   \                               \
+	   /         Option Value          /   0 or more bytes
+	   \                               \
+	   +-------------------------------+
+	*/
 
 	/**
 	 * parses a CoAP option from the given buffer. The buffer must start at the option
 	 * @param buf - the buffer to read from
 	 * @param prevCode - The option code of the previous option
 	 */
-	public static parse(buf: Buffer, prevCode: number = 0): {result: Option, readBytes: number} {
+	public static parse(buf: Buffer, prevCode: number = 0): { result: Option, readBytes: number } {
 		let delta = (buf[0] >>> 4) & 0b1111;
 		let length = buf[0] & 0b1111;
 
@@ -104,7 +108,7 @@ export abstract class Option {
 			case 15:
 				throw new Error("invalid option format");
 			default:
-				// all good
+			// all good
 		}
 		// handle special cases for the length
 		switch (length) {
@@ -119,7 +123,7 @@ export abstract class Option {
 			case 15:
 				throw new Error("invalid option format");
 			default:
-				// all good
+			// all good
 		}
 
 		const rawValue = Buffer.from(buf.slice(dataStart, dataStart + length));
@@ -148,7 +152,7 @@ export abstract class Option {
 			+ (length >= 13 ? 1 : 0)
 			+ (length >= 269 ? 1 : 0)
 			+ length
-		;
+			;
 		const ret = Buffer.allocUnsafe(totalLength);
 
 		let dataStart = 1;
@@ -414,7 +418,7 @@ export class StringOption extends Option {
 /**
  * all defined assignments for instancing Options
  */
-const optionConstructors: {[code: string]: (raw: Buffer) => Option} = {};
+const optionConstructors: { [code: string]: (raw: Buffer) => Option } = {};
 // tslint:disable:ban-types
 // tslint:disable:trailing-comma
 function defineOptionConstructor(
@@ -458,7 +462,7 @@ export const Options = Object.freeze({
 	LocationPath: (pathname: string) => optionConstructors["Location-Path"](Buffer.from(pathname)),
 
 	ContentFormat: (format: ContentFormats) => optionConstructors["Content-Format"](numberToBuffer(format)),
-	Observe: (observe: boolean) => optionConstructors["Observe"](Buffer.from([observe ? 0 : 1])),
+	Observe: (observe: boolean) => optionConstructors["Observe"](numberToBuffer(observe ? 0 : 1)),
 
 	Block1: (num: number, isLast: boolean, size: number) => {
 		// Warning: we're not checking for a valid size here, do that in advance!
