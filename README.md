@@ -159,7 +159,7 @@ To only reset connections and requests for a specific hostname, pass the hostnam
     ### __WORK IN PROGRESS__
 -->
 
-### __WORK IN PROGRESS__
+### 1.0.6 (2020-04-25)
 * (AlCalzone) Fix: Use empty buffer to serialize `Observe = 0`
 
 ### 1.0.5 (2020-04-25)
