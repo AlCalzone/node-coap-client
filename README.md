@@ -159,6 +159,9 @@ To only reset connections and requests for a specific hostname, pass the hostnam
     ### __WORK IN PROGRESS__
 -->
 
+### __WORK IN PROGRESS__
+* (AlCalzone) Avoid empty Url-Query options for observe requests
+
 ### 1.0.4 (2020-04-13)
 * (AlCalzone) All hostnames are now always normalized to lowercase
 
