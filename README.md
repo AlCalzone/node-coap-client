@@ -159,6 +159,9 @@ To only reset connections and requests for a specific hostname, pass the hostnam
     ### __WORK IN PROGRESS__
 -->
 
+### 1.0.7 (2020-05-31)
+* (AlCalzone) Import `URL` constructor from `"url"` module instead of relying on the global variable
+
 ### 1.0.6 (2020-04-25)
 * (AlCalzone) Fix: Use empty buffer to serialize `Observe = 0`
 
