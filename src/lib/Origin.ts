@@ -1,14 +1,5 @@
 import { getURLSafeHostname } from "./Hostname";
-
-// the URL object is only available on the global scope since Node 10
-// tslint:disable-next-line: no-namespace
-declare namespace global {
-	export let URL: URL;
-}
-if (!global.URL) {
-	// tslint:disable-next-line: no-var-requires
-	global.URL = require("url").URL;
-}
+import { URL } from "url";
 
 /**
  * Identifies another endpoint (similar to the new WhatWG URL API "origin" property)

@@ -9,16 +9,7 @@ import { Origin } from "./lib/Origin";
 import { SocketWrapper } from "./lib/SocketWrapper";
 import { Message, MessageCode, MessageCodes, MessageType } from "./Message";
 import { BlockOption, findOption, NumericOption, Option, Options } from "./Option";
-
-// the URL object is only available on the global scope since Node 10
-// tslint:disable-next-line: no-namespace
-declare namespace global {
-	export let URL: URL;
-}
-if (!global.URL) {
-	// tslint:disable-next-line: no-var-requires
-	global.URL = require("url").URL;
-}
+import { URL } from "url";
 
 // initialize debugging
 import * as debugPackage from "debug";
