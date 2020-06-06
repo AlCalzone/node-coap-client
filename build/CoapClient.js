@@ -20,10 +20,7 @@ const Origin_1 = require("./lib/Origin");
 const SocketWrapper_1 = require("./lib/SocketWrapper");
 const Message_1 = require("./Message");
 const Option_1 = require("./Option");
-if (!global.URL) {
-    // tslint:disable-next-line: no-var-requires
-    global.URL = require("url").URL;
-}
+const url_1 = require("url");
 // initialize debugging
 const debugPackage = require("debug");
 const LogMessage_1 = require("./lib/LogMessage");
@@ -113,7 +110,7 @@ function normalizeHostname(hostname) {
     if (!hostname.startsWith("coap://") && !hostname.startsWith("coaps://")) {
         hostname = `coaps://${Hostname_1.getURLSafeHostname(hostname)}`;
     }
-    return new URL(hostname).hostname.toLowerCase();
+    return new url_1.URL(hostname).hostname.toLowerCase();
 }
 /**
  * provides methods to access CoAP server resources
@@ -229,7 +226,7 @@ class CoapClient {
         return __awaiter(this, void 0, void 0, function* () {
             // parse/convert url
             if (typeof url === "string") {
-                url = new URL(url);
+                url = new url_1.URL(url);
             }
             // ensure we have options and set the default params
             options = this.getRequestOptions(options);
@@ -455,7 +452,7 @@ class CoapClient {
         return __awaiter(this, void 0, void 0, function* () {
             // parse/convert url
             if (typeof url === "string") {
-                url = new URL(url);
+                url = new url_1.URL(url);
             }
             // ensure we have options and set the default params
             options = this.getRequestOptions(options);
@@ -526,7 +523,7 @@ class CoapClient {
     static stopObserving(url) {
         // parse/convert url
         if (typeof url === "string") {
-            url = new URL(url);
+            url = new url_1.URL(url);
         }
         // normalize the url
         const urlString = urlToString(url);
@@ -974,18 +971,19 @@ class CoapClient {
      */
     static getSocket(origin) {
         return __awaiter(this, void 0, void 0, function* () {
+            const socketAddress = yield Hostname_1.getSocketAddressFromURLSafeHostname(origin.hostname);
+            const socketType = net_1.isIPv6(socketAddress) ? "udp6" : "udp4";
             switch (origin.protocol) {
                 case "coap:":
                     // simply return a normal udp socket
-                    return new SocketWrapper_1.SocketWrapper(dgram.createSocket("udp4"));
+                    return new SocketWrapper_1.SocketWrapper(dgram.createSocket(socketType));
                 case "coaps:":
                     // try to find security parameters
                     if (!CoapClient.dtlsParams.has(origin.hostname)) {
                         throw new Error(`No security parameters given for the resource at ${origin.toString()}`);
                     }
-                    const socketAddress = yield Hostname_1.getSocketAddressFromURLSafeHostname(origin.hostname);
                     const dtlsOpts = Object.assign({
-                        type: net_1.isIPv6(socketAddress) ? "udp6" : "udp4",
+                        type: socketType,
                         address: socketAddress,
                         port: origin.port,
                     }, CoapClient.dtlsParams.get(origin.hostname));

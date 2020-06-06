@@ -2,6 +2,7 @@
 import { ContentFormats } from "./ContentFormats";
 import { Origin } from "./lib/Origin";
 import { MessageCode } from "./Message";
+import { URL } from "url";
 export declare type RequestMethod = "get" | "post" | "put" | "delete";
 /** Options to control CoAP requests */
 export interface RequestOptions {

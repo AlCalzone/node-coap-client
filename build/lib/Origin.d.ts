@@ -1,3 +1,5 @@
+/// <reference types="node" />
+import { URL } from "url";
 /**
  * Identifies another endpoint (similar to the new WhatWG URL API "origin" property)
  */

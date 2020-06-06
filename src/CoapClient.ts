@@ -1180,20 +1180,22 @@ export class CoapClient {
 	 */
 	private static async getSocket(origin: Origin): Promise<SocketWrapper> {
 
+		const socketAddress = await getSocketAddressFromURLSafeHostname(origin.hostname);
+		const socketType = isIPv6(socketAddress) ? "udp6" : "udp4";
+
 		switch (origin.protocol) {
 			case "coap:":
 				// simply return a normal udp socket
-				return new SocketWrapper(dgram.createSocket("udp4"));
+				return new SocketWrapper(dgram.createSocket(socketType));
 			case "coaps:":
 				// try to find security parameters
 				if (!CoapClient.dtlsParams.has(origin.hostname)) {
 					throw new Error(`No security parameters given for the resource at ${origin.toString()}`);
 				}
 
-				const socketAddress = await getSocketAddressFromURLSafeHostname(origin.hostname);
 				const dtlsOpts: dtls.Options = Object.assign(
 					({
-						type: isIPv6(socketAddress) ? "udp6" : "udp4",
+						type: socketType,
 						address: socketAddress,
 						port: origin.port,
 					} as dtls.Options),
