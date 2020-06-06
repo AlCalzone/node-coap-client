@@ -159,7 +159,7 @@ To only reset connections and requests for a specific hostname, pass the hostnam
     ### __WORK IN PROGRESS__
 -->
 
-### __WORK IN PROGRESS__
+### 1.0.8 (2020-06-06)
 * (AlCalzone) Fix: use `udp6` socket type for `coap://` protocol when connection to IPv6 destinations
 
 ### 1.0.7 (2020-05-31)
