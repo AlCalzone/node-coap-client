@@ -46,6 +46,7 @@ whitelist: &whitelist
     - src/*
     - test/*
     - coverage/*
+    - .mocharc.json
     - .npmignore
     - package.json
     - README.md
