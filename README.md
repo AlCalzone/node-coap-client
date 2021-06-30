@@ -15,6 +15,7 @@ const coap = require("node-coap-client").CoapClient;
 The CoAP client provides the following public methods:
 
 * `setSecurityParams` provides the security parameters for a hostname. This has to be called **before** any connection attempts are made.
+* `setCompatOptions` provides the compatibility options for a hostname. This has to be called **before** any connection attempts are made.
 * `tryToConnect` allows checking if a given resource is available. This also establishes a connection if possible, so the following requests are sped up.
 * `request` fires off a one-time request to a given resource and returns the response.
 * `observe` subscribes to a resource to be notified on all updates.
@@ -38,6 +39,21 @@ The SecurityParameters object looks as follows, for now only PSK key exchanges a
 }
 ```
 To talk to a Trådfri gateway, you need to use `Client_identity` to generate a new DTLS identity and then use that one for further communication. Again, please use [node-tradfri-client](https://github.com/AlCalzone/node-tradfri-client) instead.
+
+### `setCompatOptions` - Provide the compatibility options for a hostname
+In order to access secured resources, you may need to set compatibility options before firing off a request:
+```ts
+coap.setCompatOptions(hostname /* string */, compat /* CompatOptions */);
+```
+
+The CompatOptions object looks as follows:
+```ts
+{
+    resetAntiReplayWindowBeforeServerHello?: boolean;
+}
+```
+
+The option `resetAntiReplayWindowBeforeServerHello` enables a workaround that is neccessary to talk to a Trådfri gateway in version `1.15.x`. If you use [node-tradfri-client](https://github.com/AlCalzone/node-tradfri-client) instead, this will be taken care of for you.
 
 ### `tryToConnect` - Check if a given resource is available
 ```ts
@@ -158,6 +174,9 @@ To only reset connections and requests for a specific hostname, pass the hostnam
     PLACEHOLDER for next version:
     ### __WORK IN PROGRESS__
 -->
+### __WORK IN PROGRESS__
+* (AlCalzone) Workaround for a bug in IKEA gateway firmware `v1.15.x`
+
 ### 2.0.0 (2021-06-19)
 * (AlCalzone) Update dependencies and require Node.js 12+
 

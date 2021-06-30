@@ -9,6 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.CoapClient = void 0;
 const crypto = require("crypto");
 const dgram = require("dgram");
 const net_1 = require("net");
@@ -122,6 +123,13 @@ class CoapClient {
     static setSecurityParams(hostname, params) {
         hostname = normalizeHostname(hostname);
         CoapClient.dtlsParams.set(hostname, params);
+    }
+    /**
+     * Sets the DTLS compat options to be used for the given hostname
+     */
+    static setCompatOptions(hostname, compat) {
+        hostname = normalizeHostname(hostname);
+        CoapClient.dtlsCompat.set(hostname, compat);
     }
     /**
      * Sets the default options for requests
@@ -987,6 +995,9 @@ class CoapClient {
                         address: socketAddress,
                         port: origin.port,
                     }, CoapClient.dtlsParams.get(origin.hostname));
+                    if (CoapClient.dtlsCompat.has(origin.hostname)) {
+                        dtlsOpts.compat = CoapClient.dtlsCompat.get(origin.hostname);
+                    }
                     // return a promise we resolve as soon as the connection is secured
                     const ret = DeferredPromise_1.createDeferredPromise();
                     // try connecting
@@ -1018,6 +1029,8 @@ CoapClient.pendingConnections = new Map();
 CoapClient.isConnecting = false;
 /** Table of all known security params, sorted by the hostname */
 CoapClient.dtlsParams = new Map();
+/** Table of all known DTLS compat options, sorted by the hostname */
+CoapClient.dtlsCompat = new Map();
 /** All pending requests, sorted by the token */
 CoapClient.pendingRequestsByToken = new Map();
 CoapClient.pendingRequestsByMsgID = new Map();
