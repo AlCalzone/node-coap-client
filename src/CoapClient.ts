@@ -123,6 +123,8 @@ export interface SecurityParameters {
 	// TODO support more
 }
 
+export type CompatOptions = dtls.Options["compat"];
+
 interface RetransmissionInfo {
 	jsTimeout: any;
 	action: () => void;
@@ -192,6 +194,8 @@ export class CoapClient {
 	private static isConnecting: boolean = false;
 	/** Table of all known security params, sorted by the hostname */
 	private static dtlsParams = new Map</* hostname: */ string, SecurityParameters>();
+	/** Table of all known DTLS compat options, sorted by the hostname */
+	private static dtlsCompat = new Map</* hostname: */ string, CompatOptions>();
 	/** All pending requests, sorted by the token */
 	private static pendingRequestsByToken = new Map</* token: */ string, PendingRequest>();
 	private static pendingRequestsByMsgID = new Map</* msgId: */ number, PendingRequest>();
@@ -212,6 +216,14 @@ export class CoapClient {
 	public static setSecurityParams(hostname: string, params: SecurityParameters) {
 		hostname = normalizeHostname(hostname);
 		CoapClient.dtlsParams.set(hostname, params);
+	}
+
+	/**
+	 * Sets the DTLS compat options to be used for the given hostname
+	 */
+	public static setCompatOptions(hostname: string, compat: CompatOptions) {
+		hostname = normalizeHostname(hostname);
+		CoapClient.dtlsCompat.set(hostname, compat);
 	}
 
 	/**
@@ -1201,6 +1213,9 @@ export class CoapClient {
 					} as dtls.Options),
 					CoapClient.dtlsParams.get(origin.hostname),
 				);
+				if (CoapClient.dtlsCompat.has(origin.hostname)) {
+					dtlsOpts.compat = CoapClient.dtlsCompat.get(origin.hostname)
+				}
 
 				// return a promise we resolve as soon as the connection is secured
 				const ret = createDeferredPromise<SocketWrapper>();

@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Origin = void 0;
 const Hostname_1 = require("./Hostname");
 const url_1 = require("url");
 /**

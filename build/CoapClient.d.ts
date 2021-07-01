@@ -1,4 +1,5 @@
 /// <reference types="node" />
+import { dtls } from "node-dtls-client";
 import { ContentFormats } from "./ContentFormats";
 import { Origin } from "./lib/Origin";
 import { MessageCode } from "./Message";
@@ -26,6 +27,7 @@ export interface SecurityParameters {
         [identity: string]: string;
     };
 }
+export declare type CompatOptions = dtls.Options["compat"];
 /**
  * provides methods to access CoAP server resources
  */
@@ -36,6 +38,8 @@ export declare class CoapClient {
     private static isConnecting;
     /** Table of all known security params, sorted by the hostname */
     private static dtlsParams;
+    /** Table of all known DTLS compat options, sorted by the hostname */
+    private static dtlsCompat;
     /** All pending requests, sorted by the token */
     private static pendingRequestsByToken;
     private static pendingRequestsByMsgID;
@@ -48,6 +52,10 @@ export declare class CoapClient {
      * Sets the security params to be used for the given hostname
      */
     static setSecurityParams(hostname: string, params: SecurityParameters): void;
+    /**
+     * Sets the DTLS compat options to be used for the given hostname
+     */
+    static setCompatOptions(hostname: string, compat: CompatOptions): void;
     /**
      * Sets the default options for requests
      * @param defaults The default options to use for requests when no options are given
