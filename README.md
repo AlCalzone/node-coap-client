@@ -174,7 +174,7 @@ To only reset connections and requests for a specific hostname, pass the hostnam
     PLACEHOLDER for next version:
     ### __WORK IN PROGRESS__
 -->
-### __WORK IN PROGRESS__
+### 1.0.9 (2021-07-01)
 * (AlCalzone) Workaround for a bug in IKEA gateway firmware `v1.15.x`
 
 ### 1.0.8 (2020-06-06)
