@@ -21,7 +21,7 @@
   "license": "MIT",
   "homepage": "https://github.com/AlCalzone/node-coap-client",
   "devDependencies": {
-    "@alcalzone/release-script": "^2.2.1",
+    "@alcalzone/release-script": "^3.4.0",
     "@types/chai": "^4.2.21",
     "@types/chai-as-promised": "^7.1.4",
     "@types/debug": "4.1.7",
