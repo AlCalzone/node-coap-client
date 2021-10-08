@@ -9,7 +9,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSocketAddressFromURLSafeHostname = exports.getURLSafeHostname = void 0;
 const dns = require("dns");
 const net_1 = require("net");
 /** Converts the given hostname to be used in an URL. Wraps IPv6 addresses in square brackets */

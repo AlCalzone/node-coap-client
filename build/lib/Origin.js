@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Origin = void 0;
 const Hostname_1 = require("./Hostname");
 const url_1 = require("url");
 /**
@@ -16,7 +15,7 @@ class Origin {
         return `${this.protocol}//${Hostname_1.getURLSafeHostname(this.hostname)}:${this.port}`;
     }
     static fromUrl(url) {
-        return new Origin(url.protocol, url.hostname, +url.port);
+        return new Origin(url.protocol, url.hostname.replace(/(^\[|\]$)/g, ''), +url.port);
     }
     static parse(origin) {
         return Origin.fromUrl(new url_1.URL(origin));

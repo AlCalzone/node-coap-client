@@ -1201,7 +1201,7 @@ export class CoapClient {
 				return new SocketWrapper(dgram.createSocket(socketType));
 			case "coaps:":
 				// try to find security parameters
-				if (!CoapClient.dtlsParams.has(origin.hostname)) {
+				if (!CoapClient.dtlsParams.has(normalizeHostname(origin.hostname))) {
 					throw new Error(`No security parameters given for the resource at ${origin.toString()}`);
 				}
 
@@ -1211,10 +1211,11 @@ export class CoapClient {
 						address: socketAddress,
 						port: origin.port,
 					} as dtls.Options),
-					CoapClient.dtlsParams.get(origin.hostname),
+					CoapClient.dtlsParams.get(normalizeHostname( origin.hostname)),
 				);
-				if (CoapClient.dtlsCompat.has(origin.hostname)) {
-					dtlsOpts.compat = CoapClient.dtlsCompat.get(origin.hostname)
+
+				if (CoapClient.dtlsCompat.has(normalizeHostname(origin.hostname))) {
+					dtlsOpts.compat = CoapClient.dtlsCompat.get(normalizeHostname(origin.hostname))
 				}
 
 				// return a promise we resolve as soon as the connection is secured

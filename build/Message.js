@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Message = exports.MessageCodes = exports.MessageCode = exports.MessageType = void 0;
 const Option_1 = require("./Option");
 var MessageType;
 (function (MessageType) {
