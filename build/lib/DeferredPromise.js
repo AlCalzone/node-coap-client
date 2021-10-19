@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createDeferredPromise = void 0;
 function normalizeReason(reason) {
     if (typeof reason === "string")
         return new Error(reason);
