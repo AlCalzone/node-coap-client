@@ -9,6 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.CoapClient = void 0;
 const crypto = require("crypto");
 const dgram = require("dgram");
 const net_1 = require("net");
@@ -986,16 +987,16 @@ class CoapClient {
                     return new SocketWrapper_1.SocketWrapper(dgram.createSocket(socketType));
                 case "coaps:":
                     // try to find security parameters
-                    if (!CoapClient.dtlsParams.has(normalizeHostname(origin.hostname))) {
+                    if (!CoapClient.dtlsParams.has(origin.hostname)) {
                         throw new Error(`No security parameters given for the resource at ${origin.toString()}`);
                     }
                     const dtlsOpts = Object.assign({
                         type: socketType,
                         address: socketAddress,
                         port: origin.port,
-                    }, CoapClient.dtlsParams.get(normalizeHostname(origin.hostname)));
-                    if (CoapClient.dtlsCompat.has(normalizeHostname(origin.hostname))) {
-                        dtlsOpts.compat = CoapClient.dtlsCompat.get(normalizeHostname(origin.hostname));
+                    }, CoapClient.dtlsParams.get(origin.hostname));
+                    if (CoapClient.dtlsCompat.has(origin.hostname)) {
+                        dtlsOpts.compat = CoapClient.dtlsCompat.get(origin.hostname);
                     }
                     // return a promise we resolve as soon as the connection is secured
                     const ret = DeferredPromise_1.createDeferredPromise();
