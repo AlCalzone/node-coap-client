@@ -174,6 +174,9 @@ To only reset connections and requests for a specific hostname, pass the hostnam
     PLACEHOLDER for next version:
     ### __WORK IN PROGRESS__
 -->
+### 2.0.2 (2021-10-19)
+* (schulztr) Fix parsing of IPv6 addresses when using the `coap://` protocol
+
 ### 2.0.1 (2021-06-30)
 * (AlCalzone) Workaround for a bug in IKEA gateway firmware `v1.15.x`
 
@@ -181,7 +184,7 @@ To only reset connections and requests for a specific hostname, pass the hostnam
 * (AlCalzone) Update dependencies and require Node.js 12+
 
 ### 1.0.8 (2020-06-06)
-* (AlCalzone) Fix: use `udp6` socket type for `coap://` protocol when connection to IPv6 destinations
+* (AlCalzone) Fix: use `udp6` socket type for `coap://` protocol when connecting to IPv6 destinations
 
 ### 1.0.7 (2020-05-31)
 * (AlCalzone) Import `URL` constructor from `"url"` module instead of relying on the global variable
@@ -285,13 +288,12 @@ To only reset connections and requests for a specific hostname, pass the hostnam
 * (AlCalzone) implemented retransmission of lost messages.
 
 ### 0.0.1
-* (AlCalzone) initial release. 
-
+* (AlCalzone) initial release.
 
 ## License
 The MIT License (MIT)
 
-Copyright (c) 2017 AlCalzone <d.griesel@gmx.net>
+Copyright (c) 2017-2021 AlCalzone <d.griesel@gmx.net>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
