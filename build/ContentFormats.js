@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ContentFormats = void 0;
 var ContentFormats;
 (function (ContentFormats) {
     ContentFormats[ContentFormats["text_plain"] = 0] = "text_plain";

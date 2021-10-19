@@ -7,6 +7,13 @@ export function getURLSafeHostname(hostname: string): string {
 	return hostname;
 }
 
+export function getSocketAddressFromURLSafeHostnameWithoutLookup(hostname: string): string {
+	// IPv4 addresses are fine
+	if (isIPv4(hostname)) return hostname;
+	// IPv6 addresses are wrapped in [], which need to be removed
+	if (/^\[.+\]$/.test(hostname)) return hostname.slice(1, -1);
+}
+
 /** Takes an URL-safe hostname and converts it to an address to be used in UDP sockets */
 export async function getSocketAddressFromURLSafeHostname(hostname: string): Promise<string> {
 	// IPv4 addresses are fine

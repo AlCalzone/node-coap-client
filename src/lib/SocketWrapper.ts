@@ -2,6 +2,7 @@ import * as dgram from "dgram";
 import { EventEmitter } from "events";
 import { dtls } from "node-dtls-client";
 import { Origin } from "./Origin";
+import { getSocketAddressFromURLSafeHostnameWithoutLookup } from "./Hostname";
 
 export class SocketWrapper extends EventEmitter {
 
@@ -29,7 +30,7 @@ export class SocketWrapper extends EventEmitter {
 		if (this.isDtls) {
 			(this.socket as dtls.Socket).send(msg);
 		} else {
-			(this.socket as dgram.Socket).send(msg, origin.port, origin.hostname);
+			(this.socket as dgram.Socket).send(msg, origin.port, getSocketAddressFromURLSafeHostnameWithoutLookup(origin.hostname));
 		}
 	}
 

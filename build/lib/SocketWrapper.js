@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SocketWrapper = void 0;
 const events_1 = require("events");
 const node_dtls_client_1 = require("node-dtls-client");
+const Hostname_1 = require("./Hostname");
 class SocketWrapper extends events_1.EventEmitter {
     constructor(socket) {
         super();
@@ -26,7 +26,7 @@ class SocketWrapper extends events_1.EventEmitter {
             this.socket.send(msg);
         }
         else {
-            this.socket.send(msg, origin.port, origin.hostname);
+            this.socket.send(msg, origin.port, Hostname_1.getSocketAddressFromURLSafeHostnameWithoutLookup(origin.hostname));
         }
     }
     close() {

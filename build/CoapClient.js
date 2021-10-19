@@ -9,7 +9,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CoapClient = void 0;
 const crypto = require("crypto");
 const dgram = require("dgram");
 const net_1 = require("net");
