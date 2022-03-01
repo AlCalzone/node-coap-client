@@ -24,7 +24,7 @@
     "@alcalzone/release-script": "~3.5.2",
     "@alcalzone/release-script-plugin-license": "~3.4.3",
     "@types/chai": "^4.3.0",
-    "@types/chai-as-promised": "^7.1.4",
+    "@types/chai-as-promised": "^7.1.5",
     "@types/debug": "4.1.7",
     "@types/mocha": "^9.1.0",
     "@types/node": "^16.11.26",
