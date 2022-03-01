@@ -27,7 +27,7 @@
     "@types/chai-as-promised": "^7.1.4",
     "@types/debug": "4.1.7",
     "@types/mocha": "^9.1.0",
-    "@types/node": "^16.11.21",
+    "@types/node": "^16.11.26",
     "@types/yargs": "^17.0.8",
     "chai": "^4.3.6",
     "chai-as-promised": "^7.1.1",
