@@ -50,7 +50,7 @@
     "url": "git+https://github.com/AlCalzone/node-coap-client.git"
   },
   "dependencies": {
-    "debug": "^4.3.3",
+    "debug": "^4.3.4",
     "node-dtls-client": "^1.0.1"
   },
   "engines": {
