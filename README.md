@@ -174,7 +174,7 @@ To only reset connections and requests for a specific hostname, pass the hostnam
     PLACEHOLDER for next version:
     ### __WORK IN PROGRESS__
 -->
-### __WORK IN PROGRESS__
+### 2.1.0 (2023-01-26)
 * (AlCalzone) Updated the `node-dtls-client` dependency for proper Electron support
 
 ### 2.0.2 (2021-10-19)
