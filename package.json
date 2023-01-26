@@ -51,7 +51,7 @@
   },
   "dependencies": {
     "debug": "^4.3.4",
-    "node-dtls-client": "^1.0.1"
+    "node-dtls-client": "^1.1.0"
   },
   "engines": {
     "node": ">=12"

@@ -7,7 +7,7 @@
 node12: &node12
   working_directory: &workdir_node12 ~/node-coap-client/node12
   docker:
-    - image: circleci/node:12
+    - image: cimg/node:12
 
 node14: &node14
   working_directory: &workdir_node14 ~/node-coap-client/node14
