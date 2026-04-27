@@ -1,8 +1,8 @@
 import * as dgram from "dgram";
 import { EventEmitter } from "events";
 import { dtls } from "node-dtls-client";
-import { Origin } from "./Origin";
-import { getSocketAddressFromURLSafeHostnameWithoutLookup } from "./Hostname";
+import { Origin } from "./Origin.js";
+import { getSocketAddressFromURLSafeHostnameWithoutLookup } from "./Hostname.js";
 
 export class SocketWrapper extends EventEmitter {
 

@@ -1,4 +1,4 @@
-import { findOption, Option } from "./Option";
+import { findOption, Option } from "./Option.js";
 
 export enum MessageType {
 	CON = 0, // Confirmable
@@ -116,10 +116,9 @@ export class Message {
 
 		const code = MessageCode.fromValue(buf[1]);
 
-		const messageId = buf[2] * 256 + buf[3];
+		const messageId = buf.readUInt16BE(2);
 
-		const token = Buffer.alloc(tokenLength);
-		if (tokenLength > 0) buf.copy(token, 0, 4, 4 + tokenLength);
+		const token = buf.subarray(4, 4 + tokenLength);
 
 		// parse options
 		let optionsStart = 4 + tokenLength;
@@ -127,7 +126,7 @@ export class Message {
 		let prevCode = 0; // code of the previously read option
 		while (optionsStart < buf.length && buf[optionsStart] !== 0xff) {
 			// read option
-			const result = Option.parse(buf.slice(optionsStart), prevCode);
+			const result = Option.parse(buf.subarray(optionsStart), prevCode);
 			if (result.readBytes <= 0) {
 				// This shouldn't happen but we want to prevent infinite loops
 				throw new Error(`Zero or less bytes read while parsing packet options. The raw buffer was ${buf.toString("hex")}`);
@@ -140,11 +139,10 @@ export class Message {
 		let payload: Buffer;
 
 		if (optionsStart < buf.length && buf[optionsStart] === 0xff) {
-			// here comes the payload
-			// copy the remainder of the packet
-			payload = Buffer.from(buf.slice(optionsStart + 1));
+			// here comes the payload — zero-copy view, treated read-only by callers
+			payload = buf.subarray(optionsStart + 1);
 		} else {
-			payload = Buffer.from([]);
+			payload = Buffer.alloc(0);
 		}
 
 		return new Message(
@@ -178,8 +176,7 @@ export class Message {
 			+ (tokenLength & 0b1111)
 			;
 		ret[1] = this.code.value;
-		ret[2] = (this.messageId >>> 8) & 0xff;
-		ret[3] = this.messageId & 0xff;
+		ret.writeUInt16BE(this.messageId, 2);
 
 		// write the token if neccessary
 		if (tokenLength > 0) {

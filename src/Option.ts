@@ -1,4 +1,4 @@
-import { ContentFormats } from "./ContentFormats";
+import { ContentFormats } from "./ContentFormats.js";
 
 function numberToBuffer(value: number): Buffer {
 	const ret = [];
@@ -125,7 +125,7 @@ export abstract class Option {
 			// all good
 		}
 
-		const rawValue = Buffer.from(buf.slice(dataStart, dataStart + length));
+		const rawValue = buf.subarray(dataStart, dataStart + length);
 		const code = prevCode + delta;
 
 		return {
@@ -210,7 +210,8 @@ export class NumericOption extends Option {
 	}
 
 	public get value(): number {
-		return this.rawValue.reduce((acc, cur) => acc * 256 + cur, 0);
+		const len = this.rawValue.length;
+		return len === 0 ? 0 : this.rawValue.readUIntBE(0, len);
 	}
 	public set value(value: number) {
 		const ret = [];
@@ -418,18 +419,14 @@ export class StringOption extends Option {
  * all defined assignments for instancing Options
  */
 const optionConstructors: { [code: string]: (raw: Buffer) => Option } = {};
-// tslint:disable:ban-types
-// tslint:disable:trailing-comma
 function defineOptionConstructor(
 	constructor: Function,
 	code: number, name: OptionName, repeatable: boolean,
 	...args: any[]
 ): void {
 	optionConstructors[code] = optionConstructors[name] =
-		(constructor as any).create.bind(constructor, ...[code, name, repeatable, ...args]);
+		(constructor as any).create.bind(constructor, code, name, repeatable, ...args);
 }
-// tslint:enable:ban-types
-// tslint:enable:trailing-comma
 defineOptionConstructor(NumericOption, 6, "Observe", false, 3);
 defineOptionConstructor(NumericOption, 7, "Uri-Port", false, 2);
 defineOptionConstructor(NumericOption, 12, "Content-Format", false, 2);

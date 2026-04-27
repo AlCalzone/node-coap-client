@@ -1,17 +1,16 @@
 {
-    "compileOnSave": true,
+    "extends": "@tsconfig/node22/tsconfig.json",
     "compilerOptions": {
         "declaration": true,
-        "module": "commonjs",
-        "moduleResolution": "node",
         "noEmitOnError": true,
-        "noImplicitAny": true,
+        "noImplicitReturns": true,
+        "noUnusedLocals": true,
         "outDir": "build/",
         "removeComments": false,
-        "sourceMap": false,
-        "inlineSourceMap": false,
-        "target": "es2015",
-        "stripInternal": true
+        "rootDir": "src",
+        "strictNullChecks": false,
+        "stripInternal": true,
+        "types": ["node"]
     },
     "include": [
         "src/**/*.ts"

@@ -1,5 +1,4 @@
-import { getURLSafeHostname } from "./Hostname";
-import { URL } from "url";
+import { getURLSafeHostname } from "./Hostname.js";
 
 /**
  * Identifies another endpoint (similar to the new WhatWG URL API "origin" property)

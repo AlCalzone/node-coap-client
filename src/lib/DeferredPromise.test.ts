@@ -1,39 +1,24 @@
-import { expect, use } from "chai";
-import * as chaiAsPromised from "chai-as-promised";
-
-before(() => {
-	use(chaiAsPromised);
-});
-
-import { createDeferredPromise } from "./DeferredPromise";
-// tslint:disable:no-unused-expression
+import { describe, expect, it } from "vitest";
+import { createDeferredPromise } from "./DeferredPromise.js";
 
 describe("lib/DeferredPromise => createDeferredPromise() =>", () => {
 
-	const promiseRes = createDeferredPromise<boolean>();
-
-	it("should resolve correctly", () => {
-		return expect(promiseRes).to.become(true);
+	it("should resolve with the given value", async () => {
+		const promiseRes = createDeferredPromise<boolean>();
+		promiseRes.resolve(true);
+		await expect(promiseRes).resolves.toBe(true);
 	});
 
-	promiseRes.resolve(true);
-
-	it("should be fulfilled", () => {
-		return expect(promiseRes).to.be.fulfilled;
-	});
-
-	it("should be rejected", () => {
-		// the promise has to get rejected inside it() or we'll get an uncaught rejection error
+	it("should be rejected when reject() is called", async () => {
 		const promiseRej = createDeferredPromise<boolean>();
 		promiseRej.reject();
-		return expect(promiseRej).to.be.rejected;
+		await expect(promiseRej).rejects.toBeUndefined();
 	});
 
-	it("reject should normalize strings to errors", () => {
-		// the promise has to get rejected inside it() or we'll get an uncaught rejection error
+	it("reject should normalize strings to errors", async () => {
 		const promiseRej = createDeferredPromise<boolean>();
 		promiseRej.reject("error message");
-		return expect(promiseRej).to.be.rejected.then(err => expect(err).to.be.an("Error"));
+		await expect(promiseRej).rejects.toBeInstanceOf(Error);
 	});
 
 });
