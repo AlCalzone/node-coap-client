@@ -125,7 +125,7 @@ export abstract class Option {
 			// all good
 		}
 
-		const rawValue = Buffer.from(buf.slice(dataStart, dataStart + length));
+		const rawValue = buf.subarray(dataStart, dataStart + length);
 		const code = prevCode + delta;
 
 		return {
@@ -210,7 +210,8 @@ export class NumericOption extends Option {
 	}
 
 	public get value(): number {
-		return this.rawValue.reduce((acc, cur) => acc * 256 + cur, 0);
+		const len = this.rawValue.length;
+		return len === 0 ? 0 : this.rawValue.readUIntBE(0, len);
 	}
 	public set value(value: number) {
 		const ret = [];

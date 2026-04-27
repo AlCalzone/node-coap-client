@@ -9,8 +9,6 @@ import { Origin } from "./lib/Origin.js";
 import { SocketWrapper } from "./lib/SocketWrapper.js";
 import { Message, MessageCode, MessageCodes, MessageType } from "./Message.js";
 import { BlockOption, findOption, NumericOption, Option, Options } from "./Option.js";
-import { URL } from "url";
-
 // initialize debugging
 import debugPackage from "debug";
 import { logMessage } from "./lib/LogMessage.js";
@@ -138,7 +136,7 @@ const MAX_CONCURRENCY = 1;
 
 function incrementToken(token: Buffer): Buffer {
 	const len = token.length;
-	const ret = Buffer.alloc(len, token);
+	const ret = Buffer.from(token);
 	for (let i = len - 1; i >= 0; i--) {
 		if (ret[i] < 0xff) {
 			ret[i]++;
@@ -285,7 +283,7 @@ export class CoapClient {
 			if (request.promise != null) (request.promise as DeferredPromise<CoapResponse>).reject("CoapClient was reset");
 			CoapClient.forgetRequest({ request });
 		}
-		debug(`${Object.keys(CoapClient.pendingRequestsByMsgID).length} pending requests remaining...`);
+		debug(`${CoapClient.pendingRequestsByMsgID.size} pending requests remaining...`);
 
 		// cancel all pending connections matching the predicate
 		for (const [originString, connection] of CoapClient.pendingConnections) {
@@ -294,7 +292,7 @@ export class CoapClient {
 			connection.reject("CoapClient was reset");
 			CoapClient.pendingConnections.delete(originString);
 		}
-		debug(`${Object.keys(CoapClient.pendingConnections).length} pending connections remaining...`);
+		debug(`${CoapClient.pendingConnections.size} pending connections remaining...`);
 
 		// forget all connections matching the predicate
 		for (const [originString, connection] of CoapClient.connections) {
@@ -306,7 +304,7 @@ export class CoapClient {
 			}
 			CoapClient.connections.delete(originString);
 		}
-		debug(`${Object.keys(CoapClient.connections).length} active connections remaining...`);
+		debug(`${CoapClient.connections.size} active connections remaining...`);
 	}
 
 	/**
@@ -345,10 +343,7 @@ export class CoapClient {
 		// create message options, be careful to order them by code, no sorting is implemented yet
 		const msgOptions: Option[] = [];
 		// [11] path of the request
-		let pathname = url.pathname || "";
-		while (pathname.startsWith("/")) { pathname = pathname.slice(1); }
-		while (pathname.endsWith("/")) { pathname = pathname.slice(0, -1); }
-		const pathParts = pathname.split("/");
+		const pathParts = (url.pathname || "").replace(/^\/+|\/+$/g, "").split("/");
 		msgOptions.push(
 			...pathParts.map(part => Options.UriPath(part)),
 		);
@@ -607,10 +602,7 @@ export class CoapClient {
 		// [6] observe?
 		msgOptions.push(Options.Observe(true));
 		// [11] path of the request
-		let pathname = url.pathname || "";
-		while (pathname.startsWith("/")) { pathname = pathname.slice(1); }
-		while (pathname.endsWith("/")) { pathname = pathname.slice(0, -1); }
-		const pathParts = pathname.split("/");
+		const pathParts = (url.pathname || "").replace(/^\/+|\/+$/g, "").split("/");
 		msgOptions.push(
 			...pathParts.map(part => Options.UriPath(part)),
 		);

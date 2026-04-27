@@ -1,4 +1,4 @@
-import * as dns from "dns";
+import { lookup } from "dns/promises";
 import { isIPv4, isIPv6 } from "net";
 
 /** Converts the given hostname to be used in an URL. Wraps IPv6 addresses in square brackets */
@@ -25,21 +25,10 @@ export async function getSocketAddressFromURLSafeHostname(hostname: string): Pro
 	}
 	// This is a hostname, look it up
 	try {
-		const address = await lookupAsync(hostname);
-		// We found an address
-		if (address) return address;
+		const addresses = await lookup(hostname, { all: true });
+		if (addresses[0]?.address) return addresses[0].address;
 	} catch {
 		// Lookup failed, continue working with the hostname
 	}
 	return hostname;
-}
-
-/** Tries to look up a hostname and returns the first IP address found */
-function lookupAsync(hostname: string): Promise<string> {
-	return new Promise<string>((resolve, reject) => {
-		dns.lookup(hostname, {all: true}, (err, addresses) => {
-			if (err) return reject(err);
-			resolve(addresses[0].address);
-		});
-	});
 }
