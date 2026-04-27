@@ -174,7 +174,7 @@ To only reset connections and requests for a specific hostname, pass the hostnam
     PLACEHOLDER for next version:
     ### __WORK IN PROGRESS__
 -->
-### __WORK IN PROGRESS__
+### 3.0.0 (2026-04-27)
 * Node.js 22+ is now required
 * This package is now pure ESM
 * Replaced Mocha/Chai/Sinon with Vitest
