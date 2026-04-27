@@ -1078,18 +1078,19 @@ export class CoapClient {
 			return true;
 		} catch (e) {
 			debug(`tryToConnect(${target}) => failed with error: ${e}`);
+			const message = e instanceof Error ? e.message : String(e);
 			if (
 				// DTLSv1.2: invalid password
-				/bad_record_mac/.test(e.message)
+				/bad_record_mac/.test(message)
 				// DTLSv1.3: invalid identity
-				|| /unknown_psk_identity/.test(e.message)
+				|| /unknown_psk_identity/.test(message)
 			) {
 				return "auth failed";
-			} else if (/(dtls handshake timed out|enotfound)/i.test(e.message)) {
+			} else if (/(dtls handshake timed out|enotfound)/i.test(message)) {
 				// The other party could not be reached or has no DTLS server running
 				return "timeout";
 			} else {
-				return e;
+				return e instanceof Error ? e : new Error(message);
 			}
 		}
 	}

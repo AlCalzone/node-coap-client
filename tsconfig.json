@@ -3,14 +3,14 @@
     "compilerOptions": {
         "declaration": true,
         "noEmitOnError": true,
+        "noImplicitReturns": true,
         "noUnusedLocals": true,
         "outDir": "build/",
         "removeComments": false,
         "rootDir": "src",
         "strictNullChecks": false,
         "stripInternal": true,
-        "types": ["node"],
-        "useUnknownInCatchVariables": false
+        "types": ["node"]
     },
     "include": [
         "src/**/*.ts"

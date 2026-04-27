@@ -12,6 +12,7 @@ export function getSocketAddressFromURLSafeHostnameWithoutLookup(hostname: strin
 	if (isIPv4(hostname)) return hostname;
 	// IPv6 addresses are wrapped in [], which need to be removed
 	if (/^\[.+\]$/.test(hostname)) return hostname.slice(1, -1);
+	return hostname;
 }
 
 /** Takes an URL-safe hostname and converts it to an address to be used in UDP sockets */
