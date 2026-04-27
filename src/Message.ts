@@ -1,4 +1,4 @@
-import { findOption, Option } from "./Option";
+import { findOption, Option } from "./Option.js";
 
 export enum MessageType {
 	CON = 0, // Confirmable

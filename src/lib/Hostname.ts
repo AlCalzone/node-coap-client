@@ -28,7 +28,7 @@ export async function getSocketAddressFromURLSafeHostname(hostname: string): Pro
 		const address = await lookupAsync(hostname);
 		// We found an address
 		if (address) return address;
-	} catch (e) {
+	} catch {
 		// Lookup failed, continue working with the hostname
 	}
 	return hostname;

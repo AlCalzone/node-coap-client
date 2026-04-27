@@ -10,7 +10,7 @@ Clientside implementation of the CoAP protocol with DTLS support
 
 ## Usage
 ```ts
-const coap = require("node-coap-client").CoapClient;
+import { CoapClient as coap } from "node-coap-client";
 ```
 The CoAP client provides the following public methods:
 
@@ -174,6 +174,13 @@ To only reset connections and requests for a specific hostname, pass the hostnam
     PLACEHOLDER for next version:
     ### __WORK IN PROGRESS__
 -->
+### __WORK IN PROGRESS__
+* Node.js 22+ is now required
+* This package is now pure ESM
+* Replaced Mocha/Chai/Sinon with Vitest
+* Replaced TSLint with Oxlint
+* Bumped `node-dtls-client` to v2
+
 ### 2.1.0 (2023-01-26)
 * (AlCalzone) Updated the `node-dtls-client` dependency for proper Electron support
 

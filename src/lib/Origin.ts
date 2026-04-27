@@ -1,4 +1,4 @@
-import { getURLSafeHostname } from "./Hostname";
+import { getURLSafeHostname } from "./Hostname.js";
 import { URL } from "url";
 
 /**

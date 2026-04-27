@@ -1,22 +1,20 @@
-// tslint:disable:no-console
-// tslint:disable:no-unused-expression
-import { expect } from "chai";
+import { describe, expect, it } from "vitest";
 
-import { CoapClient as coap } from "./CoapClient";
-import { Message, MessageCode, MessageCodes, MessageType } from "./Message";
+import { Message, MessageCodes, MessageType } from "./Message.js";
+import type { Option } from "./Option.js";
 
 describe("Message Tests =>", () => {
 
 	it("serialize", () => {
 		const msg = new Message(
-			1, MessageType.ACK, MessageCodes.empty, 0x1234, null, null, Buffer.from("abcdef", "hex"),
+			1, MessageType.ACK, MessageCodes.empty, 0x1234, null as unknown as Buffer, null as unknown as Option[], Buffer.from("abcdef", "hex"),
 		);
 		const expected = Buffer.from([
 			0b01100000, 0, 0x12, 0x34, 0xff, 0xab, 0xcd, 0xef,
 		]);
 		const output = msg.serialize();
 
-		expect(output).to.deep.equal(expected, "data mismatch");
+		expect(output).toStrictEqual(expected);
 	});
 
 	it("deserialize", () => {
@@ -25,13 +23,13 @@ describe("Message Tests =>", () => {
 		]);
 		const msg = Message.parse(raw);
 
-		expect(msg.version).to.equal(1, "data mismatch (version)");
-		expect(msg.type).to.equal(MessageType.ACK, "data mismatch (type)");
-		expect(msg.code.value).to.equal(0, "data mismatch (code)");
-		expect(msg.messageId).to.equal(0x1234, "data mismatch (messageId)");
-		expect(msg.token).to.deep.equal(Buffer.from([]), "data mismatch (token)");
-		expect(msg.options).to.deep.equal([], "data mismatch (options)");
-		expect(msg.payload).to.deep.equal(Buffer.from("abcdef", "hex"), "data mismatch (payload)");
+		expect(msg.version).toBe(1);
+		expect(msg.type).toBe(MessageType.ACK);
+		expect(msg.code.value).toBe(0);
+		expect(msg.messageId).toBe(0x1234);
+		expect(msg.token).toStrictEqual(Buffer.from([]));
+		expect(msg.options).toStrictEqual([]);
+		expect(msg.payload).toStrictEqual(Buffer.from("abcdef", "hex"));
 	});
 
 	// This buffer from https://github.com/AlCalzone/node-coap-client/issues/21
@@ -71,20 +69,7 @@ describe("Message Tests =>", () => {
 	);
 
 	it("should parse blockwise messages without crashing", () => {
-		const msg = Message.parse(blockwiseMsg);
-		// console.log(`code: ${msg.code}`);
-		// console.log(`messageId: ${msg.messageId}`);
-		// if (msg.token != null) {
-		// 	console.log(`token: ${msg.token.toString("hex")}`);
-		// }
-		// console.log(`type: ${msg.type}`);
-		// console.log(`version: ${msg.version}`);
-		// console.log("options:");
-		// for (const opt of msg.options) {
-		// 	console.log(`  [${opt.constructor.name}] ${opt.toString()}`);
-		// }
-		// console.log("payload:");
-		// console.log(msg.payload.toString("utf-8"));
+		expect(() => Message.parse(blockwiseMsg)).not.toThrow();
 	});
 
 });

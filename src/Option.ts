@@ -1,4 +1,4 @@
-import { ContentFormats } from "./ContentFormats";
+import { ContentFormats } from "./ContentFormats.js";
 
 function numberToBuffer(value: number): Buffer {
 	const ret = [];
@@ -418,18 +418,14 @@ export class StringOption extends Option {
  * all defined assignments for instancing Options
  */
 const optionConstructors: { [code: string]: (raw: Buffer) => Option } = {};
-// tslint:disable:ban-types
-// tslint:disable:trailing-comma
 function defineOptionConstructor(
 	constructor: Function,
 	code: number, name: OptionName, repeatable: boolean,
 	...args: any[]
 ): void {
 	optionConstructors[code] = optionConstructors[name] =
-		(constructor as any).create.bind(constructor, ...[code, name, repeatable, ...args]);
+		(constructor as any).create.bind(constructor, code, name, repeatable, ...args);
 }
-// tslint:enable:ban-types
-// tslint:enable:trailing-comma
 defineOptionConstructor(NumericOption, 6, "Observe", false, 3);
 defineOptionConstructor(NumericOption, 7, "Uri-Port", false, 2);
 defineOptionConstructor(NumericOption, 12, "Content-Format", false, 2);

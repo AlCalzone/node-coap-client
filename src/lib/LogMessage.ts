@@ -1,10 +1,10 @@
 // initialize debugging
-import * as debugPackage from "debug";
+import debugPackage from "debug";
 const debug = debugPackage("node-coap-client:message");
 
-import { Message } from "../Message";
+import { Message } from "../Message.js";
 
-export function logMessage(msg: Message, includePayload: boolean = false): void {
+export function logMessage(msg: Message): void {
 	debug("=============================");
 	debug(`received message`);
 	debug(`messageId: ${msg.messageId}`);

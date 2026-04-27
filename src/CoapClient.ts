@@ -2,24 +2,19 @@ import * as crypto from "crypto";
 import * as dgram from "dgram";
 import { isIPv6 } from "net";
 import { dtls } from "node-dtls-client";
-import { ContentFormats } from "./ContentFormats";
-import { createDeferredPromise, DeferredPromise } from "./lib/DeferredPromise";
-import { getSocketAddressFromURLSafeHostname, getURLSafeHostname } from "./lib/Hostname";
-import { Origin } from "./lib/Origin";
-import { SocketWrapper } from "./lib/SocketWrapper";
-import { Message, MessageCode, MessageCodes, MessageType } from "./Message";
-import { BlockOption, findOption, NumericOption, Option, Options } from "./Option";
+import { ContentFormats } from "./ContentFormats.js";
+import { createDeferredPromise, DeferredPromise } from "./lib/DeferredPromise.js";
+import { getSocketAddressFromURLSafeHostname, getURLSafeHostname } from "./lib/Hostname.js";
+import { Origin } from "./lib/Origin.js";
+import { SocketWrapper } from "./lib/SocketWrapper.js";
+import { Message, MessageCode, MessageCodes, MessageType } from "./Message.js";
+import { BlockOption, findOption, NumericOption, Option, Options } from "./Option.js";
 import { URL } from "url";
 
 // initialize debugging
-import * as debugPackage from "debug";
-import { logMessage } from "./lib/LogMessage";
+import debugPackage from "debug";
+import { logMessage } from "./lib/LogMessage.js";
 const debug = debugPackage("node-coap-client");
-
-// print version info
-// tslint:disable-next-line:no-var-requires
-const npmVersion = require("../package.json").version;
-debug(`CoAP client version ${npmVersion}`);
 
 export type RequestMethod = "get" | "post" | "put" | "delete";
 
@@ -277,7 +272,7 @@ export class CoapClient {
 			}
 		} else {
 			// we weren't given a filter, forget all connections
-			predicate = (originString: string) => true;
+			predicate = () => true;
 		}
 
 		// forget all pending requests matching the predicate
@@ -443,7 +438,7 @@ export class CoapClient {
 		let connection: ConnectionInfo;
 		try {
 			connection = await CoapClient.getConnection(target);
-		} catch (e) {
+		} catch {
 			// we didn't even get a connection, so fail the ping
 			return false;
 		}
@@ -485,7 +480,7 @@ export class CoapClient {
 			// now wait for success or failure
 			await response;
 			success = true;
-		} catch (e) {
+		} catch {
 			success = false;
 		} finally {
 			// cleanup
@@ -679,7 +674,7 @@ export class CoapClient {
 		CoapClient.forgetRequest({ url: urlString });
 	}
 
-	private static onMessage(origin: string, message: Buffer, rinfo: dgram.RemoteInfo) {
+	private static onMessage(origin: string, message: Buffer, _rinfo: dgram.RemoteInfo) {
 		// parse the CoAP message
 		const coapMsg = Message.parse(message);
 		logMessage(coapMsg);
