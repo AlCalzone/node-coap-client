@@ -13,12 +13,12 @@ describe("CoapClient Tests =>", () => {
 	const wrongOrigin = new Origin("coaps:", "does-not-exist2", 5684);
 
 	it("connecting to a non-existing endpoint should fail with ENOTFOUND or DTLS timeout", async () => {
-		await expect(coap.getConnection(correctOrigin)).rejects.toThrow(/(ENOTFOUND)|(DTLS handshake timed out)/);
+		await expect(coap.getConnection(correctOrigin)).rejects.toThrow(/getaddrinfo|DTLS handshake timed out/);
 	}, 10000);
 
 	it("the hostname should not be case-sensitive", async () => {
 		// we test against a non-existing endpoint, so ENOTFOUND should be thrown but not "No security parameters given"
-		await expect(coap.getConnection(correctOrigin_wrongCasing)).rejects.toThrow(/(ENOTFOUND)|(DTLS handshake timed out)/);
+		await expect(coap.getConnection(correctOrigin_wrongCasing)).rejects.toThrow(/getaddrinfo|DTLS handshake timed out/);
 	}, 10000);
 
 	it("missing security params should fail the connection with the correct message", async () => {
